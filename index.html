@@ -197,14 +197,27 @@ try{ /* dati salvati prima degli utenti: diventano il primo utente */
 }catch(e){}
 if(!reg.attivo&&reg.lista.length===1)reg.attivo=reg.lista[0].id;
 if(reg.attivo&&reg.lista.some(u=>u.id===reg.attivo))caricaUtente(reg.attivo);else reg.attivo=null;
-function save(){if(!reg.attivo)return;const j=JSON.stringify(state);try{localStorage.setItem(KU(reg.attivo),j)}catch(e){}idbSet(KU(reg.attivo),j)}
+let lastSave={ok:null,t:0},PERSIST=false;
+function storageOk(){try{localStorage.setItem('__t','1');const v=localStorage.getItem('__t')==='1';localStorage.removeItem('__t');return v}catch(e){return false}}
+function showSaveState(){
+  const b=$('#savebtn');if(!b||lastSave.ok===null)return;
+  const hh=new Date(lastSave.t).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  b.innerHTML=lastSave.ok?`💾 Salvato ✓ ${hh}`:'⚠️ NON salvato';
+  b.style.background=lastSave.ok?'':'var(--red)'}
+function save(){
+  if(!reg.attivo)return;
+  const j=JSON.stringify(state);let ok=false;
+  try{localStorage.setItem(KU(reg.attivo),j);ok=localStorage.getItem(KU(reg.attivo))===j}catch(e){ok=false}
+  idbSet(KU(reg.attivo),j);
+  lastSave={ok,t:Date.now()};showSaveState()}
+try{if(navigator.storage&&navigator.storage.persisted)navigator.storage.persisted().then(p=>{PERSIST=p})}catch(e){}
 /* seconda copia automatica (IndexedDB): se la memoria principale risulta vuota, i dati tornano da soli */
 if(!reg.lista.length)idbGet(KREG).then(async r=>{
   if(!r)return;const R=JSON.parse(r);if(!R.lista||!R.lista.length)return;
   for(const u of R.lista){const d=await idbGet(KU(u.id));if(d){try{localStorage.setItem(KU(u.id),d)}catch(e){}}}
   reg=R;if(!reg.attivo&&reg.lista.length===1)reg.attivo=reg.lista[0].id;
   if(reg.attivo)caricaUtente(reg.attivo);saveReg();render(false)}).catch(()=>{});
-addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+setInterval(()=>{if(reg.attivo)save()},20000);addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
 
 /* ---------- CALCOLO FABBISOGNO ---------- */
 function profiloOk(){const p=state.profile;return +p.eta>=8&&+p.eta<=90&&+p.peso>=20&&+p.peso<=250&&+p.altezza>=100&&+p.altezza<=230}
@@ -856,6 +869,7 @@ ${reg.lista.map(u=>`<div class="fr" style="grid-template-columns:1fr auto"><butt
 <label for="nu">Come ti chiami?</label><input id="nu" placeholder="es. Giacomo">
 <div class="btns"><span id="umsg" class="tag" style="color:var(--red)"></span><button class="btn" data-newuser>Crea utente</button></div>
 <h3 style="margin-top:18px">🔒 Copia di sicurezza</h3>
+<p class="tag" style="margin:0 0 6px">Memoria del telefono: ${lastSave.ok===false?'<b style="color:var(--red)">NON funziona</b>':(lastSave.ok?'funziona ✓ (ultimo salvataggio '+new Date(lastSave.t).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})+')':'in attesa')}${PERSIST?' · protetta dalla pulizia automatica ✓':''} · ${reg.copia?'ultima copia di sicurezza il '+fd(reg.copia):'nessuna copia di sicurezza ancora'}</p>
 <p class="sub">I dati si salvano da soli su questo telefono a ogni modifica. Se però cancelli la memoria del browser, o se apri l'app da un altro browser o dalla icona Home (hanno memorie separate), non li ritrovi. Copia i dati e incollali in un posto sicuro (Note, o un messaggio a te stesso): potrai ripristinarli quando vuoi.${reg.copia?` Ultima copia: ${fd(reg.copia)}.`:''}</p>
 <button class="btn sec" data-backup>Copia i miei dati</button>
 <label for="bk">Per ripristinare, incolla qui la copia</label><textarea id="bk" rows="3" placeholder="Incolla qui…"></textarea>
@@ -883,7 +897,8 @@ function render(keepScroll){
   if(A.id==='pasto')body=(showUsers?vUtenti():'')+vPasto();
   else if(!reg.attivo)body=vUtenti();
   else body=(showUsers?vUtenti():'')+(showHome?homeHtml():'')+(A.id==='piano'&&state.fatto&&state.modifica?`<div class="warn">✏️ Stai modificando i dati. Quando hai finito tocca <b>Salva modifiche</b>: il piano si aggiorna con i dati nuovi.</div>`:'')+(!state.fatto&&A.id!=='piano'?`<div class="warn">👉 Prima crea il tuo piano: dati completati <b>${completezza().pct}/100</b>. <button class="chip" data-area="piano">Crea il mio piano</button></div>`:'')+(A.id==='piano'&&!state.fatto?`<div class="subnav"><button class="${state.step===0?'on':''}" data-go="0">1 · Dati</button><button class="${state.step===1?'on':''}" data-go="1">2 · Attività</button><button data-concludi>3 · Crea il piano</button></div>`:A.steps.length>1?`<div class="subnav">${A.steps.map(i=>`<button class="${i===state.step?'on':''}" data-go="${i}">${STEPS[i]}</button>`).join('')}</div>`:'')+(A.id==='piano'&&inModifica()?`<div id="compl">${completezzaHtml()}</div>`:'')+VIEWS[state.step]();
-  $('#main').innerHTML=body;
+  const memOk=storageOk()&&lastSave.ok!==false;
+  $('#main').innerHTML=(memOk?'':`<div class="warn">⚠️ <b>Questo browser non sta salvando i dati</b> (forse sei in navigazione privata o la memoria è piena). Apri la pagina in Safari o Chrome normale, non in privato: altrimenti i dati si perdono alla chiusura. Intanto usa «Copia i miei dati» in 👤 Utente per tenerne una copia.</div>`)+body;
   if(keepScroll)scrollTo(0,y);else scrollTo(0,0);
   save();
 }
@@ -992,6 +1007,7 @@ document.addEventListener('change',e=>{
   else if(d.pf!==undefined){$('#pu').innerHTML=unitHtml(byId(t.value))}
 });
 fetch('offerte.json?v='+Date.now()).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.negozi){OFFERTE=j;if(reg.attivo)render(true)}}).catch(()=>{});
+if(reg.attivo){save();showSaveState()}
 render();
 </script>
 </body>
