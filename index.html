@@ -22,6 +22,7 @@ header h1{margin:0;font-size:22px}
 .homebtn{background:#fff;color:#14735a;border:0;border-radius:20px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer}
 .savebtn{position:fixed;z-index:20;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--acc);color:var(--onacc);border:0;border-radius:28px;padding:13px 20px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.28)}
 .toast{position:fixed;z-index:21;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(76px + env(safe-area-inset-bottom,0px));margin:0 auto;max-width:420px;background:var(--ink);color:var(--bg);border-radius:12px;padding:11px 14px;font-size:14px;text-align:center}
+.priv{max-width:900px;margin:0 auto;padding:0 16px 110px;color:var(--mut);font-size:12px}
 .steps{margin:6px 0 0;padding-left:20px;font-size:15px}.steps li{margin:4px 0}
 header p{margin:2px 0 0;opacity:.85;font-size:14px}
 nav{display:flex;gap:6px;overflow-x:auto;margin-top:12px}
@@ -79,6 +80,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
   <nav id="nav"></nav>
 </header>
 <main id="main"></main>
+<p class="priv">🔒 Privacy: l'app non invia nessun dato. Profilo, peso e frigo restano solo su questo telefono. Nessun account, nessun tracciamento, nessuna pubblicità. Con «Elimina utente» cancelli tutto.</p>
 <button id="savebtn" class="savebtn" data-save hidden>💾 Salva i dati</button>
 <div id="toast" class="toast" hidden></div>
 
@@ -231,6 +233,7 @@ ${seg('profile.vita',[['sedentaria','Seduto quasi sempre','scuola, studio, divan
 <label>Qual è il tuo obiettivo?</label>
 ${seg('profile.obiettivo',[['mantenere','Mantenere il peso'],['massa','Mettere massa','+10% calorie'],['dimagrire','Perdere peso piano piano','-10% calorie']],p.obiettivo)}
 </div>
+<div class="btns"><span class="tag">Elimina l'utente e tutti i suoi dati da questo telefono.</span><button class="chip" data-deluser="${reg.attivo}">${confDel===reg.attivo?'Sicuro? Tocca di nuovo per eliminare':'🗑 Elimina questo utente'}</button></div>
 <div class="btns"><span></span><button class="btn" data-go="1">Avanti: le attività →</button></div>`}
 
 function vAttivita(){return `
