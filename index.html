@@ -13,21 +13,27 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Dieta">
 <style>
-:root{--bg:#f5f7f2;--card:#fff;--ink:#1c2321;--mut:#6b7772;--line:#e3e8e2;--acc:#1f9d6b;--acc2:#e8f6ef;--warm:#f59e0b;--warm2:#fff5df;--red:#d9534f;--onacc:#fff}
+:root{--bg:#f5f7f2;--card:#fff;--ink:#1c2321;--mut:#6b7772;--line:#e3e8e2;--acc:#1f9d6b;--acc2:#e8f6ef;--warm:#f59e0b;--warm2:#fff5df;--red:#d9534f;--onacc:#fff;--h1:#1f9d6b;--h2:#14735a}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{background:linear-gradient(135deg,#1f9d6b,#14735a);color:#fff;padding:18px 16px 12px}
+header{background:linear-gradient(135deg,var(--h1),var(--h2));color:#fff;padding:18px 16px 12px}
 header h1{margin:0;font-size:22px}
 .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.homebtn{background:#fff;color:#14735a;border:0;border-radius:20px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.homebtn{background:#fff;color:var(--h2);border:0;border-radius:20px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer}
 .savebtn{position:fixed;z-index:20;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--acc);color:var(--onacc);border:0;border-radius:28px;padding:13px 20px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.28)}
 .toast{position:fixed;z-index:21;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(76px + env(safe-area-inset-bottom,0px));margin:0 auto;max-width:420px;background:var(--ink);color:var(--bg);border-radius:12px;padding:11px 14px;font-size:14px;text-align:center}
 .priv{max-width:900px;margin:0 auto;padding:0 16px 110px;color:var(--mut);font-size:12px}
 .steps{margin:6px 0 0;padding-left:20px;font-size:15px}.steps li{margin:4px 0}
 header p{margin:2px 0 0;opacity:.85;font-size:14px}
 nav{display:flex;gap:6px;overflow-x:auto;margin-top:12px}
-nav button{flex:1 0 auto;background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:20px;padding:7px 12px;font-size:14px;cursor:pointer;white-space:nowrap}
-nav button.on{background:#fff;color:#14735a;font-weight:600}
+nav button{flex:1 1 0;background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:14px;padding:11px 2px;font-size:13px;cursor:pointer;text-align:center;white-space:nowrap}
+body[data-area="pasto"]{--acc:#d4690b;--acc2:#fdefdc;--h1:#f29a3d;--h2:#b85c0b}
+body[data-area="peso"]{--acc:#2b7de0;--acc2:#e4effd;--h1:#3b8ff0;--h2:#1d5db0}
+body[data-area="obiettivo"]{--acc:#8b4fd6;--acc2:#efe6fb;--h1:#a068e8;--h2:#6a33b0}
+.subnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.subnav button{border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:20px;padding:8px 14px;font-size:14px;cursor:pointer}
+.subnav button.on{border-color:var(--acc);background:var(--acc2);font-weight:700}
+nav button.on{background:#fff;color:var(--h2);font-weight:600}
 main{max-width:900px;margin:0 auto;padding:16px 16px 96px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
 h2{margin:0 0 4px;font-size:20px}h3{margin:0 0 8px;font-size:16px}
@@ -75,7 +81,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 </head>
 <body>
 <header>
-  <div class="top"><h1>🥗 Dieta</h1><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="homebtn" data-pasto>🍽️ Calcola pasto</button><button id="utbtn" class="homebtn" data-users>👤 Utenti</button><button class="homebtn" data-home>📲 Aggiungi alla Home</button></span></div>
+  <div class="top"><h1>🥗 Dieta</h1><button id="utbtn" class="homebtn" data-users>👤 Utente</button></div>
   <p>Calcola le calorie della tua giornata e crea il piano con quello che hai in frigo.</p>
   <nav id="nav"></nav>
 </header>
@@ -86,7 +92,9 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 
 <script>
 const $=(s,r=document)=>r.querySelector(s);
-const STEPS=['1 Profilo','2 Attività','3 Fabbisogno','4 Frigorifero','5 Piano','6 Peso'];
+const STEPS=['Profilo','Attività','Fabbisogno','Frigorifero','Il mio piano','Peso','Obiettivo'];
+const AREE=[{id:'piano',nome:'📋 Piano',steps:[0,1,4,3]},{id:'pasto',nome:'🍽️ Pasto'},{id:'peso',nome:'⚖️ Peso',steps:[5]},{id:'obiettivo',nome:'🎯 Obiettivo',steps:[6]}];
+const areaOf=i=>(AREE.find(a=>a.steps&&a.steps.includes(i))||AREE[0]).id;
 const ROLES={PRO:'Proteine',CAR:'Carboidrati',VER:'Verdure',FRU:'Frutta',LAT:'Latte e yogurt',SEC:'Frutta secca',DOL:'Dolci e spalmabili',GRA:'Grassi e condimenti'};
 
 /* ---------- ATTIVITA' (nome, emoji, MET) ---------- */
@@ -163,7 +171,7 @@ const BASE_DISPENSA=['olio','pasta','riso','pane','latte','biscotti','parmigiano
 const byId=id=>FOODS.find(f=>f.id===id);
 
 /* ---------- STATO ---------- */
-const DEF={step:0,seed:1,profile:{nome:'Giacomo',sesso:'m',eta:'',peso:'',altezza:'',vita:'leggera',obiettivo:'mantenere'},attivita:{},frigo:{},custom:[],opz:{giorni:1,pasti:5,compra:false,aggiusta:0},ricerca:'',pesi:[],evento:{nome:'',data:'',min:'',max:''},pasto:{tipo:-1,righe:[]}};
+const DEF={step:0,seed:1,profile:{nome:'Giacomo',sesso:'m',eta:'',peso:'',altezza:'',vita:'leggera',obiettivo:'mantenere'},attivita:{},frigo:{},custom:[],opz:{giorni:1,pasti:5,aggiusta:0},ricerca:'',pesi:[],evento:{nome:'',data:'',min:'',max:''},pasto:{tipo:-1,righe:[]},area:'piano'};
 let _db=null;
 function idb(){return _db||(_db=new Promise((res,rej)=>{try{const q=indexedDB.open('dietaDB',1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)}catch(e){rej(e)}}))}
 function idbSet(k,v){idb().then(db=>{db.transaction('kv','readwrite').objectStore('kv').put(v,k)}).catch(()=>{})}
@@ -178,6 +186,7 @@ function caricaUtente(id){
   let st=NUOVO();
   try{const s=JSON.parse(localStorage.getItem(KU(id))||'null');if(s){st=Object.assign(st,s);st.profile=Object.assign({},DEF.profile,s.profile);st.opz=Object.assign({},DEF.opz,s.opz)}}catch(e){}
   st.pasto=Object.assign({tipo:-1,righe:[]},st.pasto);
+  if(!AREE.some(a=>a.id===st.area))st.area='piano';
   st.evento=Object.assign({nome:'',data:'',min:'',max:''},st.evento);
   state=st;reg.attivo=id;clearCustom();state.custom.forEach(c=>FOODS.push(c));saveReg();
 }
@@ -234,6 +243,7 @@ ${seg('profile.vita',[['sedentaria','Seduto quasi sempre','scuola, studio, divan
 ${seg('profile.obiettivo',[['mantenere','Mantenere il peso'],['massa','Mettere massa','+10% calorie'],['dimagrire','Perdere peso piano piano','-10% calorie']],p.obiettivo)}
 </div>
 <div class="btns"><span class="tag">Elimina l'utente e tutti i suoi dati da questo telefono.</span><button class="chip" data-deluser="${reg.attivo}">${confDel===reg.attivo?'Sicuro? Tocca di nuovo per eliminare':'🗑 Elimina questo utente'}</button></div>
+<div class="btns"><span class="tag">Metti l'app sull'icona della Home del telefono.</span><button class="chip" data-home>📲 Aggiungi alla Home</button></div>
 <div class="btns"><span></span><button class="btn" data-go="1">Avanti: le attività →</button></div>`}
 
 function vAttivita(){return `
@@ -241,11 +251,11 @@ function vAttivita(){return `
 <div class="grid">${ACT.map(([id,n,e])=>{const a=state.attivita[id];return `<div class="act ${a?'on':''}" data-act="${id}"><div class="e">${e}</div><div class="n">${n}</div>
 <div class="cfg"><div><label>Volte/sett.</label><select data-af="${id}:giorni">${[1,2,3,4,5,6,7].map(x=>`<option ${a&&+a.giorni===x?'selected':''}>${x}</option>`).join('')}</select></div>
 <div><label>Minuti</label><input type="number" data-af="${id}:minuti" value="${a?a.minuti:60}" min="5" max="480" step="5"></div></div></div>`}).join('')}</div></div>
-<div class="btns"><button class="btn sec" data-go="0">← Indietro</button><button class="btn" data-go="2">Calcola il fabbisogno →</button></div>`}
+<div class="btns"><button class="btn sec" data-go="0">← Indietro</button><button class="btn" data-go="4">Crea il mio piano →</button></div>`}
 
 function vFabb(){
   const r=fabb();
-  if(!r)return `<div class="warn">Completa prima età, peso e altezza nel passo 1.</div><div class="btns"><button class="btn" data-go="0">Vai al profilo</button></div>`;
+  if(!r)return `<div class="warn">Completa prima età, peso e altezza nel Profilo.</div><div class="btns"><button class="btn" data-go="0">Vai al profilo</button></div>`;
   const p=state.profile,tot=r.prot*4+r.fat*9+r.carb*4;
   const warn=[];
   if(+p.eta<18&&p.obiettivo==='dimagrire')warn.push('Sei ancora in crescita: prima di perdere peso parlane con il pediatra o un dietista. Le calorie qui sotto sono solo indicative.');
@@ -262,8 +272,7 @@ function vFabb(){
 <label>Regola a mano (se senti di avere più o meno fame)</label>
 <input type="range" min="-500" max="500" step="50" data-aggiusta value="${state.opz.aggiusta}"></div>
 <div class="card"><h3>Come dividerle</h3>
-${bar('Proteine',r.prot,r.prot*4,'#e5533d')}${bar('Carboidrati',r.carb,r.carb*4,'#f59e0b')}${bar('Grassi',r.fat,r.fat*9,'#3b82f6')}</div>
-<div class="btns"><button class="btn sec" data-go="1">← Attività</button><button class="btn" data-go="3">Apri il frigorifero →</button></div>`}
+${bar('Proteine',r.prot,r.prot*4,'#e5533d')}${bar('Carboidrati',r.carb,r.carb*4,'#f59e0b')}${bar('Grassi',r.fat,r.fat*9,'#3b82f6')}</div>`}
 
 function gridHtml(){
   const q=state.ricerca.toLowerCase();
@@ -277,10 +286,13 @@ function stockList(){
   if(!ids.length)return '<p class="sub">Il frigorifero è vuoto: tocca gli alimenti sopra.</p>';
   return ids.map(f=>`<div class="fr"><span>${f.e} ${esc(f.n)}</span><input type="number" min="0" placeholder="${f.pz?'n. pezzi':'grammi'}" data-q="${f.id}" value="${state.frigo[f.id].q||''}"></div>`).join('')}
 
+function updVerd(){const v=$('#verdetto');if(v)v.innerHTML=verdettoFrigoHtml()}
 function vFrigo(){return `
-<div class="card"><h2>Apri il frigorifero 🧊</h2><p class="sub">Tocca tutto quello che trovi (frigo e dispensa). Se vuoi, scrivi anche la quantità: altrimenti la considero abbondante.</p>
+<div class="card"><h2>Frigorifero 🧊</h2><p class="sub">Usalo quando per rispettare il tuo piano non hai gli ingredienti. Tocca quello che hai (frigo e dispensa), se vuoi con la quantità: sotto ti dico se sei in linea e se puoi seguire il piano.</p>
+<button class="btn" data-vai>Vedi se sono in linea ↓</button>
+<div style="height:10px"></div>
 <button class="chip add" data-dispensa>＋ Aggiungi i basici di dispensa</button>
-<input class="search" data-search placeholder="🔍 Cerca un alimento…" value="${esc(state.ricerca)}">
+<input id="search" class="search" data-search placeholder="🔍 Cerca un alimento…" value="${esc(state.ricerca)}">
 <div id="grid">${gridHtml()}</div></div>
 <div class="card"><h3>Cosa c'è nel frigo (${Object.keys(state.frigo).length})</h3><div id="stock">${stockList()}</div></div>
 <div class="card"><h3>Non trovi un alimento? Aggiungilo</h3>
@@ -288,7 +300,30 @@ function vFrigo(){return `
 <div><label>Tipo</label><select id="cr">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div></div>
 <div class="row"><div><label>kcal /100 g</label><input id="ck" type="number"></div><div><label>Proteine</label><input id="cp" type="number"></div><div><label>Carboidrati</label><input id="cc" type="number"></div><div><label>Grassi</label><input id="cf" type="number"></div></div>
 <div class="btns"><span></span><button class="btn sec" data-addcustom>Aggiungi</button></div></div>
-<div class="btns"><button class="btn sec" data-go="2">← Fabbisogno</button><button class="btn" data-go="4">Crea il piano →</button></div>`}
+<div id="verdetto">${verdettoFrigoHtml()}</div>
+<div class="btns"><button class="btn sec" data-go="4">← Il mio piano</button><span></span></div>`}
+
+function verdettoFrigoHtml(){
+  const r=fabb();
+  if(!r)return `<div class="warn">Prima inserisci i tuoi dati nel Profilo: così so quante calorie ti servono.</div><div class="btns"><button class="btn" data-go="0">Vai al Profilo</button></div>`;
+  if(!Object.keys(state.frigo).length)return `<div class="card"><h3>Il risultato</h3><p class="sub">Tocca gli alimenti che hai: qui ti dico se sei in linea con il tuo piano.</p></div>`;
+  const ideal=buildPlan(r,true),fr=buildPlan(r,false);
+  const need={};ideal.forEach(d=>d.meals.forEach(m=>m.items.forEach(i=>{need[i.food.id]=(need[i.food.id]||0)+i.g})));
+  const mq=(f,g)=>f.pz?Math.round(g/f.pz)+' pz':Math.round(g)+' g';
+  const mancano=[];
+  for(const id in need){const f=byId(id);if(!f)continue;
+    if(!state.frigo[id])mancano.push({f,txt:'serve '+mq(f,need[id]),add:1});
+    else{const q=parseFloat(state.frigo[id].q);if(q>0&&q*(f.pz||1)<need[id]*0.95)mancano.push({f,txt:`ne hai ${q}${f.pz?' pz':' g'}, servono ${mq(f,need[id])}`})}}
+  const n=fr.length,kc=fr.reduce((a,d)=>a+d.tot.kcal,0)/n,pr=fr.reduce((a,d)=>a+d.tot.p,0)/n,cov=kc/r.target;
+  let cls,t;
+  if(!mancano.length){cls='ok';t=`✅ Hai tutto: puoi seguire il tuo piano così com'è (${r.target} kcal al giorno).`}
+  else if(cov>=0.9&&pr>=r.prot*0.8){cls='mid';t=`🟡 Sei quasi in linea: con quello che hai arrivi a circa ${Math.round(kc)} kcal su ${r.target} (${Math.round(cov*100)}%). Segui il menu qui sotto. Per il piano originale ti mancano alcuni ingredienti.`}
+  else{cls='no';t=`⚠️ Con quello che hai non riesci a rispettare il piano: arrivi a circa ${Math.round(kc)} kcal su ${r.target} (${Math.round(cov*100)}%)${pr<r.prot*0.8?`, con poche proteine (${Math.round(pr)} g su ${r.prot})`:''}.`}
+  const sg=suggerimenti(fr,r);
+  return `<div class="card" style="border-color:${cls==='ok'?'var(--acc)':'var(--warm)'}"><h3>Il risultato</h3><p style="margin:0 0 8px">${t}</p>
+${mancano.length?`<div class="tag" style="margin-bottom:4px">Per seguire il piano alla lettera ti mancano (tocca se ce l'hai):</div><div>${mancano.slice(0,14).map(m=>`<span class="chip add" ${m.add?`data-addfood="${m.f.id}"`:''}>${m.f.e} ${esc(m.f.n)} · ${m.txt}</span>`).join('')}</div>`:''}
+${sg.out.length&&cls!=='ok'?`<div class="tag" style="margin:8px 0 4px">Per arrivare alle tue calorie aggiungi:</div><div>${sg.out.map(f=>`<span class="chip add" data-addfood="${f.id}">＋ ${f.e} ${esc(f.n)}</span>`).join('')}</div>`:''}</div>
+<h3 style="margin:14px 0 8px">Il menu con quello che hai</h3>`+giorniHtml(fr,r,false)}
 
 /* ---------- PIANIFICATORE ---------- */
 function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -333,25 +368,23 @@ function composeMeal(slot,kcal,ctx){
   for(const comp of slot.comps){
     const all=FOODS.filter(f=>comp.roles.includes(f.role)&&f.tags.includes(slot.tag)&&!chosen.some(c=>c.food===f));
     const key=f=>(ctx.today[f.id]||0)*10+(ctx.usage[f.id]||0)+ctx.rnd()*3;
-    const fr=all.filter(f=>state.frigo[f.id]&&ctx.stock[f.id]>=Math.min(f.min,f.pz||f.min)).sort((a,b)=>key(a)-key(b));
-    const shop=all.filter(f=>!state.frigo[f.id]).sort((a,b)=>key(a)-key(b));
+    const fr=all.filter(f=>ctx.ideale?true:(state.frigo[f.id]&&ctx.stock[f.id]>=Math.min(f.min,f.pz||f.min))).sort((a,b)=>key(a)-key(b));
     let food=null,buy=false;
     if(fr.length)food=fr[0];
-    else if(state.opz.compra&&!comp.opt&&shop.length){food=shop[0];buy=true}
     if(!food){if(!comp.opt)manca.push(comp.roles[0]);continue}
-    chosen.push({food,w:comp.w,fixed:!!comp.fixed,buy,stock:buy?Infinity:ctx.stock[food.id]});
+    chosen.push({food,w:comp.w,fixed:!!comp.fixed,buy,stock:ctx.ideale?Infinity:ctx.stock[food.id]});
   }
   let items=scale(chosen,kcal,false);
   if(kcal-items.reduce((a,x)=>a+x.kcal,0)>kcal*0.08)items=scale(chosen,kcal,true);
-  for(const it of items){ctx.stock[it.food.id]-=it.g;ctx.today[it.food.id]=(ctx.today[it.food.id]||0)+1;ctx.usage[it.food.id]=(ctx.usage[it.food.id]||0)+1}
+  for(const it of items){if(!ctx.ideale)ctx.stock[it.food.id]-=it.g;ctx.today[it.food.id]=(ctx.today[it.food.id]||0)+1;ctx.usage[it.food.id]=(ctx.usage[it.food.id]||0)+1}
   return{nome:slot.nome,tag:slot.tag,target:kcal,items,manca,kcal:items.reduce((a,x)=>a+x.kcal,0)};
 }
-function buildPlan(r){
+function buildPlan(r,ideale){
   const rnd=rng(state.seed*7919),stock={},usage={};
   for(const id in state.frigo){const f=byId(id);if(!f)continue;const q=parseFloat(state.frigo[id].q);stock[id]=q>0?q*(f.pz||1):Infinity}
   const days=[];
   for(let d=0;d<state.opz.giorni;d++){
-    const ctx={rnd,stock,usage,today:{}};
+    const ctx={rnd,stock,usage,today:{},ideale:!!ideale};
     const meals=slots(state.opz.pasti).map(s=>composeMeal(s,Math.round(r.target*s.share),ctx));
     const tot={kcal:0,p:0,c:0,f:0};
     meals.forEach(m=>m.items.forEach(i=>{tot.kcal+=i.kcal;tot.p+=i.p;tot.c+=i.c;tot.f+=i.f_}));
@@ -380,27 +413,25 @@ function ricettaLink(m,di,mi){
   if(!pr.length)return '';
   const q=pr.join(' ');
   return `<div style="margin-top:4px"><a href="https://www.giallozafferano.it/ricerca-ricette/${encodeURIComponent(q).replace(/%20/g,'+')}/" target="_blank" rel="noopener" style="color:var(--acc);font-size:14px;font-weight:600">🍳 Ricetta con ${esc(q)} su GialloZafferano ↗</a><div class="tag">Cerca una ricetta da circa ${Math.round(m.target)} kcal a porzione. Poi tocca il bottone per controllare se è in linea.</div><button class="chip" data-cp="${di}-${mi}">🔎 Controlla una ricetta</button></div>`}
-function vPiano(){
-  const r=fabb();
-  if(!r)return `<div class="warn">Completa prima il profilo.</div><div class="btns"><button class="btn" data-go="0">Vai al profilo</button></div>`;
-  if(!Object.keys(state.frigo).length&&!state.opz.compra)return `<div class="warn">Il frigorifero è vuoto: aggiungi qualcosa, oppure attiva "suggerisci cosa comprare" qui sotto.</div>${opzHtml()}<div class="btns"><button class="btn" data-go="3">Apri il frigorifero</button></div>`;
-  const days=buildPlan(r),sg=suggerimenti(days,r);lastPlan=days;
+function giorniHtml(days,r,rec){
   const bar=(l,v,t,col)=>`<div class="kv"><span>${l}</span><b>${Math.round(v)} / ${t} g</b></div><div class="bar"><i style="width:${Math.min(100,v/t*100)}%;background:${col}"></i></div>`;
-  return `${opzHtml()}
-${sg.out.length||sg.short>=r.target*0.05?`<div class="warn noprint"><b>Con quello che c'è nel frigo arrivo a circa ${Math.round(r.target-sg.short)} kcal su ${r.target}.</b> ${sg.out.length?'Per completare la giornata aggiungi:<div>'+sg.out.map(f=>`<span class="chip add" data-addfood="${f.id}">＋ ${f.e} ${esc(f.n)}</span>`).join('')+'</div>':'Le quantità nel frigo sono poche: aggiungine altre.'}</div>`:''}
-${days.map((d,i)=>`<div class="card"><h2 style="text-transform:capitalize">${dayLabel(i)}</h2>
+  return days.map((d,i)=>`<div class="card"><h2 style="text-transform:capitalize">${dayLabel(i)}</h2>
 <p class="sub">${Math.round(d.tot.kcal)} kcal su ${r.target}</p>
 <div class="bar"><i style="width:${Math.min(100,d.tot.kcal/r.target*100)}%"></i></div>
 ${d.meals.map((m,mi)=>`<div class="meal"><h4>${m.nome}<span>${Math.round(m.kcal)} kcal</span></h4>
-${m.items.map(it=>`<div class="it"><span>${it.food.e} ${esc(it.food.n)}${it.buy?'<span class="buy">🛒 da comprare</span>':''}</span><span>${qty(it)} · ${Math.round(it.kcal)} kcal</span></div>`).join('')||'<div class="tag">Niente di adatto nel frigo.</div>'}
-${ricettaLink(m,i,mi)}${m.manca.length?`<div class="tag">Ti manca: ${m.manca.map(x=>ROLES[x].toLowerCase()).join(', ')}</div>`:''}</div>`).join('')}
+${m.items.map(it=>`<div class="it"><span>${it.food.e} ${esc(it.food.n)}</span><span>${qty(it)} · ${Math.round(it.kcal)} kcal</span></div>`).join('')||'<div class="tag">Niente di adatto nel frigo.</div>'}
+${rec?ricettaLink(m,i,mi):''}${m.manca.length?`<div class="tag">Ti manca: ${m.manca.map(x=>ROLES[x].toLowerCase()).join(', ')}</div>`:''}</div>`).join('')}
 <div style="margin-top:8px">${bar('Proteine',d.tot.p,r.prot,'#e5533d')}${bar('Carboidrati',d.tot.c,r.carb,'#f59e0b')}${bar('Grassi',d.tot.f,r.fat,'#3b82f6')}</div></div>`).join('')}
-<div class="btns noprint"><button class="btn sec" data-go="3">← Frigorifero</button><button class="btn sec" data-regen>🔄 Altre idee</button><button class="btn" data-print>🖨️ Stampa</button></div>`}
-
+function vPiano(){
+  const r=fabb();
+  if(!r)return vFabb();
+  const days=buildPlan(r,true);lastPlan=days;
+  return vFabb()+`<h3 style="margin:18px 0 8px">Il tuo piano dei pasti</h3>`+opzHtml()+giorniHtml(days,r,true)+`
+<div class="btns noprint"><button class="btn sec" data-regen>🔄 Altre idee</button><button class="btn" data-print>🖨️ Stampa</button></div>
+<div class="card noprint"><h3>Non hai tutti gli ingredienti?</h3><p class="sub">Scrivi quello che hai nel frigorifero: ti dico se puoi rispettare il piano.</p><button class="btn" data-go="3">🧊 Apri il frigorifero</button></div>`}
 function opzHtml(){const o=state.opz;return `<div class="card noprint"><div class="row">
-<div><label>Quanti giorni</label><select data-o="giorni">${[1,2,3,5,7].map(x=>`<option ${o.giorni==x?'selected':''}>${x}</option>`).join('')}</select></div>
-<div><label>Pasti al giorno</label><select data-o="pasti">${[3,4,5].map(x=>`<option ${o.pasti==x?'selected':''}>${x}</option>`).join('')}</select></div></div>
-<label style="display:flex;gap:8px;align-items:center;color:var(--ink);font-size:15px"><input type="checkbox" style="width:auto" data-compra ${o.compra?'checked':''}> Suggerisci anche cosa comprare nei pasti</label></div>`}
+<div><label for="og">Quanti giorni</label><select id="og" data-o="giorni">${[1,2,3,5,7].map(x=>`<option ${o.giorni==x?'selected':''}>${x}</option>`).join('')}</select></div>
+<div><label for="op">Pasti al giorno</label><select id="op" data-o="pasti">${[3,4,5].map(x=>`<option ${o.pasti==x?'selected':''}>${x}</option>`).join('')}</select></div></div></div>`}
 
 
 /* ---------- PESO ---------- */
@@ -464,29 +495,38 @@ function graficoPeso(){
   return s+'</svg>';
 }
 function vPeso(){
-  const L=state.pesi,a=L[0],b=L[L.length-1],e=state.evento,ok=evOk(),vd=verdetto();
+  const L=state.pesi,a=L[0],b=L[L.length-1];
   const dt=a&&b&&a!==b?b.kg-a.kg:0;
   const sg=v=>(v>0?'+':v<0?'−':'')+fk(Math.abs(v))+' kg';
   const stat=(l,v)=>`<div><div class="tag">${l}</div><div style="font-size:24px;font-weight:700">${v}</div></div>`;
-  let ob='—';
-  if(b&&ok){const mn=num(e.min),mxv=num(e.max);ob=b.kg>mxv?sg(mxv-b.kg):b.kg<mn?sg(mn-b.kg):'✅ nel range'}
-  const gg=ok?giorniA(e.data):null;
   return `<div class="card"><h2>Il tuo peso ⚖️</h2><p class="sub">Segna il peso ogni giorno (meglio alla stessa ora): qui vedi come cambia.</p>
-<div class="row" style="margin-bottom:12px">${stat('Attuale',b?fk(b.kg)+' kg':'—')}${stat('Dall\'inizio',L.length>1?sg(dt):'—')}${stat(ok&&gg>=0?'Al range (tra '+gg+' gg)':'Al range',ob)}</div>
-${graficoPeso()}
-${vd?`<div class="${vd.c==='ok'||!vd.c?'':'warn'}" style="margin:12px 0 0;${vd.c==='ok'?'background:var(--acc2);border-radius:12px;padding:12px;font-size:14px':''}">${vd.c==='no'?'⚠️':vd.c==='ok'?'✅':'🎯'} ${esc(vd.t)}</div>`:''}</div>
+<div class="row" style="margin-bottom:12px">${stat('Attuale',b?fk(b.kg)+' kg':'—')}${stat('Dall\'inizio',L.length>1?sg(dt):'—')}${stat('Pesate',L.length)}</div>
+${graficoPeso()}</div>
 <div class="card"><h3>Aggiungi il peso di oggi</h3>
 <div class="row"><div><label for="pd">Data</label><input id="pd" type="date" value="${oggi()}" max="${oggi()}"></div>
 <div><label for="pk">Peso (kg)</label><input id="pk" type="text" inputmode="decimal" autocomplete="off" placeholder="es. 62,5"></div></div>
 ${L.length&&L[L.length-1].d===oggi()?'<p class="tag">✅ Oggi hai già segnato il peso: se salvi di nuovo lo aggiorni.</p>':'<p class="tag">⏳ Oggi non hai ancora segnato il peso.</p>'}
 <div class="btns"><span id="pmsg" class="tag" style="color:var(--red)"></span><button class="btn" data-addpeso>Salva peso</button></div></div>
-<div class="card"><h3>Un obiettivo con una data 🥊</h3><p class="sub">Per esempio un incontro di pugilato: devi arrivare tra 60 e 65 kg. L'app mostra la fascia sul grafico e dice se sei in linea.</p>
+<div class="card"><h3>Storico</h3>${L.length?L.map((x,i)=>({x,i})).reverse().map(({x,i})=>{const pv=i>0?x.kg-L[i-1].kg:null;return `<div class="kv"><span>${fd(x.d)}</span><span><b>${fk(x.kg)} kg</b> <span class="tag">${pv===null?'':sg(pv)}</span> <button class="chip" data-delpeso="${i}" aria-label="Elimina">✕</button></span></div>`}).join(''):'<p class="sub">Ancora nessun peso registrato.</p>'}</div>`}
+
+function vObiettivo(){
+  const L=state.pesi,b=L[L.length-1],e=state.evento,ok=evOk(),vd=verdetto();
+  const sg=v=>(v>0?'+':v<0?'−':'')+fk(Math.abs(v))+' kg';
+  const stat=(l,v)=>`<div><div class="tag">${l}</div><div style="font-size:24px;font-weight:700">${v}</div></div>`;
+  let ob='—';
+  if(b&&ok){const mn=num(e.min),mxv=num(e.max);ob=b.kg>mxv?sg(mxv-b.kg):b.kg<mn?sg(mn-b.kg):'✅ nel range'}
+  const gg=ok?giorniA(e.data):null;
+  return `<div class="card"><h2>Il tuo obiettivo 🎯</h2><p class="sub">Per esempio un incontro di pugilato: devi arrivare tra 60 e 65 kg. Scrivi la data e la fascia di peso: sul grafico vedi se sei in linea.</p>
 <label for="evn">Cosa devi fare</label><input id="evn" data-ev="nome" value="${esc(e.nome)}" placeholder="es. Incontro di pugilato">
 <div class="row"><div><label for="evd">Data</label><input id="evd" type="date" data-ev="data" value="${e.data}" min="${oggi()}"></div>
 <div><label for="evmin">Peso minimo (kg)</label><input id="evmin" type="text" inputmode="decimal" data-ev="min" value="${esc(e.min)}" placeholder="60"></div>
 <div><label for="evmax">Peso massimo (kg)</label><input id="evmax" type="text" inputmode="decimal" data-ev="max" value="${esc(e.max)}" placeholder="65"></div></div>
 ${ok?'<div class="btns"><span></span><button class="chip" data-clearev>Togli l\'obiettivo</button></div>':''}</div>
-<div class="card"><h3>Storico</h3>${L.length?L.map((x,i)=>({x,i})).reverse().map(({x,i})=>{const pv=i>0?x.kg-L[i-1].kg:null;return `<div class="kv"><span>${fd(x.d)}</span><span><b>${fk(x.kg)} kg</b> <span class="tag">${pv===null?'':sg(pv)}</span> <button class="chip" data-delpeso="${i}" aria-label="Elimina">✕</button></span></div>`}).join(''):'<p class="sub">Ancora nessun peso registrato.</p>'}</div>`}
+<div class="card"><div class="row" style="margin-bottom:12px">${stat('Peso attuale',b?fk(b.kg)+' kg':'—')}${stat(ok&&gg>=0?'Giorni mancanti':'Giorni',ok?gg:'—')}${stat('Al range',ob)}</div>
+${graficoPeso()}
+${vd?`<div class="${vd.c==='ok'||!vd.c?'':'warn'}" style="margin:12px 0 0;${vd.c==='ok'?'background:var(--acc2);border-radius:12px;padding:12px;font-size:14px':''}">${vd.c==='no'?'⚠️':vd.c==='ok'?'✅':'🎯'} ${esc(vd.t)}</div>`:''}
+${!L.length?'<p class="sub">Segna il tuo peso nell\'area Peso per vedere l\'andamento.</p>':''}
+<div class="btns"><span></span><button class="btn sec" data-go="5">⚖️ Segna il peso</button></div></div>`}
 
 /* ---------- CALCOLA PASTO ---------- */
 /* alimenti extra: si trovano solo cercando nel Calcola pasto */
@@ -546,7 +586,7 @@ function vPasto(){
   const righe=state.pasto.righe.map(x=>{const f=byId(x.id);return f?{f,g:x.g,k:x.g*f.k/100,p:x.g*f.p/100,c:x.g*f.c/100,fa:x.g*f.f/100}:null}).filter(Boolean);
   const tot=righe.reduce((a,x)=>({k:a.k+x.k,p:a.p+x.p,c:a.c+x.c,f:a.f+x.fa}),{k:0,p:0,c:0,f:0});
   let vd='';
-  if(!r)vd='<div class="warn">Per confrontare con il piano completa prima il profilo (passo 1).</div>';
+  if(!r)vd='<div class="warn">Per confrontare con il piano crea l\'utente e completa il Profilo (area Piano).</div>';
   else if(righe.length&&!sc){const perc=Math.round(tot.k/r.target*100);vd=`<div style="margin-top:12px;background:var(--acc2);border-radius:12px;padding:12px;font-size:14px">🍽️ Questo pasto sono <b>${Math.round(tot.k)} kcal</b>, il <b>${perc}%</b> delle tue ${r.target} kcal giornaliere. Te ne restano circa ${Math.max(0,r.target-Math.round(tot.k))} per il resto della giornata.</div><div class="bar"><i style="width:${Math.min(100,perc)}%;background:var(--acc)"></i></div><div class="tag">Se scegli il tipo di pasto qui sopra, ti dico anche se è in linea con il piano.</div>`}
   else if(righe.length){
     const tg=Math.round(r.target*sc.share),diff=tot.k-tg,pct=diff/tg,pt=r.prot*sc.share,nome=sc.nome.replace(/^\S+\s/,'').toLowerCase();
@@ -559,7 +599,7 @@ function vPasto(){
 <div class="kv" style="margin-top:10px"><span>Questo pasto</span><b>${Math.round(tot.k/tg*100)}% del previsto · ${Math.round(tot.k/r.target*100)}% della giornata</b></div>
 <div class="bar"><i style="width:${Math.min(100,tot.k/tg*100)}%;background:${cls==='ok'?'var(--acc)':'var(--warm)'}"></i></div>`}
   
-  return `<div class="card"><h2>Calcola il pasto 🍽️</h2><p class="sub">Scegli un alimento, scrivi quanto ne mangi: ti dico le calorie e se il pasto è in linea con il piano.</p>
+  return `<div class="card"><h2>Crea il tuo pasto 🍽️</h2><p class="sub">Scegli un alimento, scrivi quanto ne mangi: ti dico le calorie e se il pasto è in linea con il piano.</p>
 <label for="pt">Che pasto è? (facoltativo)</label><select id="pt" data-ptipo><option value="-1" ${ti<0?'selected':''}>Qualsiasi pasto</option>${sl.map((x,i)=>`<option value="${i}" ${i===ti?'selected':''}>${x.nome}${r?` (circa ${Math.round(r.target*x.share)} kcal)`:''}</option>`).join('')}</select>
 ${r?`<div class="tag" style="margin-top:8px">Calorie di riferimento del tuo piano (tocca per confrontare):</div><div>${sl.map((x,i)=>`<span class="chip ${i===ti?'on':''}" data-ptset="${i}">${x.nome} · ${Math.round(r.target*x.share)} kcal</span>`).join('')}</div>`:''}
 <label for="pfq">Cosa hai mangiato? Scrivilo qui</label><input id="pfq" data-pq autocomplete="off" placeholder="es. pasta, mela, pizza, yogurt…">
@@ -577,11 +617,11 @@ ${righe.length?righe.map((x,i)=>`<div class="kv"><span>${x.f.e} ${esc(x.f.n)} <s
 
 /* ---------- MOTORE UI ---------- */
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-const VIEWS=[vProfilo,vAttivita,vFabb,vFrigo,vPiano,vPeso];
-let showHome=false,dp=null,showPasto=false;
+const VIEWS=[vProfilo,vAttivita,vFabb,vFrigo,vPiano,vPeso,vObiettivo];
+let showHome=false,dp=null;
 function vUtenti(){
   const forced=!reg.attivo;
-  return `<div class="card" style="border-color:var(--acc)"><div class="top"><h2>${forced?'Chi sei? 👋':'👤 Utenti'}</h2>${forced?'':'<button class="chip" data-users aria-label="Chiudi">✕</button>'}</div>
+  return `<div class="card" style="border-color:var(--acc)"><div class="top"><h2>${forced?(reg.lista.length?'Chi sei? 👋':'Benvenuto 👋 Crea il tuo utente'):'👤 Utenti'}</h2>${forced?'':'<button class="chip" data-users aria-label="Chiudi">✕</button>'}</div>
 <p class="sub">Ognuno ha i propri dati (profilo, attività, frigo, peso), salvati solo su questo telefono. Nessuno può vederli dagli altri telefoni.</p>
 ${reg.lista.map(u=>`<div class="fr" style="grid-template-columns:1fr auto"><button class="opt ${u.id===reg.attivo?'on':''}" data-switch="${u.id}">👤 ${esc(u.nome)}${u.id===reg.attivo?' <small>in uso</small>':''}</button><button class="chip" data-deluser="${u.id}">${confDel===u.id?'Sicuro? Tocca di nuovo':'🗑 Elimina'}</button></div>`).join('')}
 <h3 style="margin-top:14px">${reg.lista.length?'Aggiungi un nuovo utente':'Crea il tuo utente'}</h3>
@@ -602,26 +642,32 @@ function homeHtml(){
 <p class="sub">Così trovi l'icona sulla Home e la apri con un tocco, come un'app. Aprila prima dal browser, non dentro WhatsApp o altre app.</p>
 ${dp?'<button class="btn" data-install>Installa ora</button>':''}
 ${ios?(/CriOS/.test(ua)?bc+bi:bi+bc)+ba:and?ba+bi+bc:bi+bc+ba}</div>`}
-function pastoPannello(){return `<div class="top" style="margin-bottom:10px"><b style="font-size:18px">🍽️ Calcola pasto</b><button class="chip" data-pasto>✕ Chiudi</button></div>`+vPasto()}
 function render(keepScroll){
   const y=scrollY;
   const sb=$('#savebtn');if(sb)sb.hidden=!reg.attivo;
   const au=reg.lista.find(u=>u.id===reg.attivo);const ub=$('#utbtn');if(ub)ub.textContent='👤 '+(au?au.nome:'Utenti');
-  $('#nav').innerHTML=!reg.attivo?'':STEPS.map((s,i)=>`<button class="${i===state.step?'on':''}" data-go="${i}">${s}</button>`).join('');
-  $('#main').innerHTML=showPasto?pastoPannello():(showUsers||!reg.attivo?vUtenti():'')+(reg.attivo?(showHome?homeHtml():'')+VIEWS[state.step]():'');
+  const A=AREE.find(x=>x.id===state.area)||AREE[0];
+  state.area=A.id;document.body.dataset.area=A.id;
+  if(A.steps&&!A.steps.includes(state.step))state.step=A.steps[0];
+  $('#nav').innerHTML=AREE.map(x=>`<button class="${x.id===A.id?'on':''}" data-area="${x.id}">${x.nome}</button>`).join('');
+  let body;
+  if(A.id==='pasto')body=(showUsers?vUtenti():'')+vPasto();
+  else if(!reg.attivo)body=vUtenti();
+  else body=(showUsers?vUtenti():'')+(showHome?homeHtml():'')+(A.steps.length>1?`<div class="subnav">${A.steps.map(i=>`<button class="${i===state.step?'on':''}" data-go="${i}">${STEPS[i]}</button>`).join('')}</div>`:'')+VIEWS[state.step]();
+  $('#main').innerHTML=body;
   if(keepScroll)scrollTo(0,y);else scrollTo(0,0);
   save();
 }
 function setPath(path,v){const [a,b]=path.split('.');state[a][b]=v}
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-seg],[data-act],[data-food],[data-dispensa],[data-addcustom],[data-save],[data-cp],[data-ptset],[data-pasto],[data-pick],[data-addpasto],[data-delpasto],[data-clearpasto],[data-users],[data-backup],[data-restore],[data-switch],[data-deluser],[data-newuser],[data-home],[data-install],[data-regen],[data-addpeso],[data-clearev],[data-delpeso],[data-print],[data-addfood]');
+  const t=e.target.closest('[data-go],[data-seg],[data-act],[data-food],[data-dispensa],[data-addcustom],[data-save],[data-cp],[data-ptset],[data-vai],[data-area],[data-pick],[data-addpasto],[data-delpasto],[data-clearpasto],[data-users],[data-backup],[data-restore],[data-switch],[data-deluser],[data-newuser],[data-home],[data-install],[data-regen],[data-addpeso],[data-clearev],[data-delpeso],[data-print],[data-addfood]');
   if(!t)return;
   if(e.target.closest('.cfg')&&t.dataset.act)return;
   const d=t.dataset;
-  if('go' in d){showPasto=false;state.step=+d.go;render()}
+  if('go' in d){state.step=+d.go;state.area=areaOf(+d.go);showUsers=false;render()}
   else if('seg' in d){setPath(d.seg,d.v);render(true)}
   else if('act' in d){const id=d.act;if(state.attivita[id])delete state.attivita[id];else state.attivita[id]={giorni:2,minuti:60};render(true)}
-  else if('food' in d){if(state.frigo[d.food])delete state.frigo[d.food];else state.frigo[d.food]={q:''};$('#grid').innerHTML=gridHtml();$('#stock').innerHTML=stockList();save()}
+  else if('food' in d){if(state.frigo[d.food])delete state.frigo[d.food];else state.frigo[d.food]={q:''};$('#grid').innerHTML=gridHtml();$('#stock').innerHTML=stockList();updVerd();save()}
   else if('dispensa' in d){BASE_DISPENSA.forEach(id=>{if(!state.frigo[id])state.frigo[id]={q:''}});render(true)}
   else if('addcustom' in d){
     const n=$('#cn').value.trim(),k=+$('#ck').value;if(!n||!(k>0)){alert('Inserisci almeno nome e kcal per 100 g.');return}
@@ -646,9 +692,10 @@ document.addEventListener('click',e=>{
     try{ok=!!reg.attivo&&localStorage.getItem(KU(reg.attivo))===JSON.stringify(state)}catch(e){}
     const tt=$('#toast');tt.textContent=ok?'✅ Dati salvati su questo telefono.':'⚠️ Il browser non permette di salvare qui: usa «Copia i miei dati» in 👤 Utenti.';tt.hidden=false;
     clearTimeout(window._tt);window._tt=setTimeout(()=>{tt.hidden=true},2600)}
-  else if('cp' in d){const [di,mi]=d.cp.split('-'),m=lastPlan[+di].meals[+mi];state.pasto.tipo=+mi;state.pasto.righe=m.items.map(i=>({id:i.food.id,g:i.g}));showPasto=true;render()}
+  else if('cp' in d){const [di,mi]=d.cp.split('-'),m=lastPlan[+di].meals[+mi];state.pasto.tipo=+mi;state.pasto.righe=m.items.map(i=>({id:i.food.id,g:i.g}));state.area='pasto';render()}
   else if('ptset' in d){state.pasto.tipo=state.pasto.tipo===+d.ptset?-1:+d.ptset;render(true)}
-  else if('pasto' in d){showPasto=!showPasto;showUsers=false;showHome=false;render(false)}
+  else if('vai' in d){const v=$('#verdetto');if(v)v.scrollIntoView({behavior:'smooth',block:'start'})}
+  else if('area' in d){state.area=d.area;showUsers=false;showHome=false;render(false)}
   else if('pick' in d){pSel=d.pick;const f=byId(pSel);$('#pfq').value=f.n;$('#pu').innerHTML=unitHtml(f);aggiornaSug();$('#pq').focus()}
   else if('addpasto' in d){
     const q=$('#pfq').value.trim(),qt=num($('#pq').value),u=$('#pu').value,msg=$('#pmsg2');
@@ -685,7 +732,7 @@ document.addEventListener('input',e=>{
   const t=e.target,d=t.dataset;
   if(d.p!==undefined){state.profile[d.p]=t.value;save();if(d.p==='nome'){const u=reg.lista.find(x=>x.id===reg.attivo);if(u){u.nome=t.value.trim()||u.nome;saveReg();const ub=$('#utbtn');if(ub)ub.textContent='👤 '+u.nome}}}
   else if(d.af){const [id,k]=d.af.split(':');if(state.attivita[id]){state.attivita[id][k]=t.value;save()}}
-  else if(d.q){state.frigo[d.q].q=t.value;save()}
+  else if(d.q){state.frigo[d.q].q=t.value;save();updVerd()}
   else if(d.search!==undefined){state.ricerca=t.value;$('#grid').innerHTML=gridHtml()}
   else if(d.aggiusta!==undefined){state.opz.aggiusta=+t.value;save()}
   else if(d.ev){state.evento[d.ev]=t.value;save()}
@@ -694,7 +741,6 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   const t=e.target,d=t.dataset;
   if(d.o){state.opz[d.o]=+t.value;render(true)}
-  else if(d.compra!==undefined){state.opz.compra=t.checked;render(true)}
   else if(d.aggiusta!==undefined){render(true)}
   else if(d.ev){render(true)}
   else if(d.ptipo!==undefined){state.pasto.tipo=+t.value;render(true)}
