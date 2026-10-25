@@ -75,7 +75,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 </head>
 <body>
 <header>
-  <div class="top"><h1>🥗 Dieta</h1><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="utbtn" class="homebtn" data-users>👤 Utenti</button><button class="homebtn" data-home>📲 Aggiungi alla Home</button></span></div>
+  <div class="top"><h1>🥗 Dieta</h1><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="homebtn" data-pasto>🍽️ Calcola pasto</button><button id="utbtn" class="homebtn" data-users>👤 Utenti</button><button class="homebtn" data-home>📲 Aggiungi alla Home</button></span></div>
   <p>Calcola le calorie della tua giornata e crea il piano con quello che hai in frigo.</p>
   <nav id="nav"></nav>
 </header>
@@ -86,7 +86,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 
 <script>
 const $=(s,r=document)=>r.querySelector(s);
-const STEPS=['1 Profilo','2 Attività','3 Fabbisogno','4 Frigorifero','5 Piano','6 Peso','7 Calcola pasto'];
+const STEPS=['1 Profilo','2 Attività','3 Fabbisogno','4 Frigorifero','5 Piano','6 Peso'];
 const ROLES={PRO:'Proteine',CAR:'Carboidrati',VER:'Verdure',FRU:'Frutta',LAT:'Latte e yogurt',SEC:'Frutta secca',DOL:'Dolci e spalmabili',GRA:'Grassi e condimenti'};
 
 /* ---------- ATTIVITA' (nome, emoji, MET) ---------- */
@@ -163,7 +163,7 @@ const BASE_DISPENSA=['olio','pasta','riso','pane','latte','biscotti','parmigiano
 const byId=id=>FOODS.find(f=>f.id===id);
 
 /* ---------- STATO ---------- */
-const DEF={step:0,seed:1,profile:{nome:'Giacomo',sesso:'m',eta:'',peso:'',altezza:'',vita:'leggera',obiettivo:'mantenere'},attivita:{},frigo:{},custom:[],opz:{giorni:1,pasti:5,compra:false,aggiusta:0},ricerca:'',pesi:[],evento:{nome:'',data:'',min:'',max:''},pasto:{tipo:0,righe:[]}};
+const DEF={step:0,seed:1,profile:{nome:'Giacomo',sesso:'m',eta:'',peso:'',altezza:'',vita:'leggera',obiettivo:'mantenere'},attivita:{},frigo:{},custom:[],opz:{giorni:1,pasti:5,compra:false,aggiusta:0},ricerca:'',pesi:[],evento:{nome:'',data:'',min:'',max:''},pasto:{tipo:-1,righe:[]}};
 let _db=null;
 function idb(){return _db||(_db=new Promise((res,rej)=>{try{const q=indexedDB.open('dietaDB',1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)}catch(e){rej(e)}}))}
 function idbSet(k,v){idb().then(db=>{db.transaction('kv','readwrite').objectStore('kv').put(v,k)}).catch(()=>{})}
@@ -177,7 +177,7 @@ function clearCustom(){for(let i=FOODS.length-1;i>=0;i--)if(/^c\d{6,}$/.test(FOO
 function caricaUtente(id){
   let st=NUOVO();
   try{const s=JSON.parse(localStorage.getItem(KU(id))||'null');if(s){st=Object.assign(st,s);st.profile=Object.assign({},DEF.profile,s.profile);st.opz=Object.assign({},DEF.opz,s.opz)}}catch(e){}
-  st.pasto=Object.assign({tipo:0,righe:[]},st.pasto);
+  st.pasto=Object.assign({tipo:-1,righe:[]},st.pasto);
   st.evento=Object.assign({nome:'',data:'',min:'',max:''},st.evento);
   state=st;reg.attivo=id;clearCustom();state.custom.forEach(c=>FOODS.push(c));saveReg();
 }
@@ -521,7 +521,7 @@ const ALIAS={pasta:'spaghetti penne rigatoni fusilli maccheroni tagliatelle',pas
 const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 function cerca(q){
   const w=norm(q).split(/\s+/).filter(Boolean);if(!w.length)return[];
-  return FOODS.map(f=>{const n=norm(f.n+' '+(ALIAS[f.id]||''));return w.every(x=>n.includes(x))?{f,s:norm(f.n).startsWith(w[0])?0:1}:null}).filter(Boolean).sort((a,b)=>a.s-b.s).map(x=>x.f).slice(0,8);
+  return FOODS.map(f=>{const n=norm(f.n+' '+(ALIAS[f.id]||''));return w.every(x=>n.includes(x))?{f,s:norm(f.n)===norm(q).trim()?-1:norm(f.n).startsWith(w[0])?0:1}:null}).filter(Boolean).sort((a,b)=>a.s-b.s).map(x=>x.f).slice(0,8);
 }
 let pSel=null;
 function aggiornaSug(){
@@ -533,13 +533,21 @@ function aggiornaSug(){
   cu.hidden=!!m.length;
 }
 
-function unitHtml(f){return `<option value="g">grammi</option>${f&&f.pz?`<option value="pz">pezzi (1 ≈ ${f.pz} g)</option>`:''}`}
+const LIQUIDI={latte:1,lattescremato:1,lattesoia:1,cola:1,succofrutta:1,birra:1,vino:1,caffe:1,cappuccino:1,olio:0.92};
+const liq=f=>!!f&&f.id in LIQUIDI;
+function convG(f,q,u){if(u==='pz'&&f.pz)return q*f.pz;if(u==='ml')return q*(LIQUIDI[f.id]||1);if(u==='l')return q*1000*(LIQUIDI[f.id]||1);if(u==='kg')return q*1000;return q}
+function qtaTxt(f,g){
+  if(f.pz)return Math.round(g/f.pz*10)/10+' pz · '+Math.round(g)+' g';
+  if(liq(f)){const ml=g/(LIQUIDI[f.id]||1);return (ml>=1000?fk(ml/1000)+' l':Math.round(ml)+' ml')}
+  return Math.round(g)+' g'}
+function unitHtml(f){return `<option value="g">grammi</option>${liq(f)?'<option value="ml">millilitri</option><option value="l">litri</option>':''}${f&&f.pz?`<option value="pz">pezzi (1 ≈ ${f.pz} g)</option>`:''}`}
 function vPasto(){
-  const r=fabb(),sl=slots(state.opz.pasti),ti=Math.min(state.pasto.tipo,sl.length-1),sc=sl[ti];
+  const r=fabb(),sl=slots(state.opz.pasti),ti=state.pasto.tipo<0?-1:Math.min(state.pasto.tipo,sl.length-1),sc=ti<0?null:sl[ti];
   const righe=state.pasto.righe.map(x=>{const f=byId(x.id);return f?{f,g:x.g,k:x.g*f.k/100,p:x.g*f.p/100,c:x.g*f.c/100,fa:x.g*f.f/100}:null}).filter(Boolean);
   const tot=righe.reduce((a,x)=>({k:a.k+x.k,p:a.p+x.p,c:a.c+x.c,f:a.f+x.fa}),{k:0,p:0,c:0,f:0});
   let vd='';
   if(!r)vd='<div class="warn">Per confrontare con il piano completa prima il profilo (passo 1).</div>';
+  else if(righe.length&&!sc){const perc=Math.round(tot.k/r.target*100);vd=`<div style="margin-top:12px;background:var(--acc2);border-radius:12px;padding:12px;font-size:14px">🍽️ Questo pasto sono <b>${Math.round(tot.k)} kcal</b>, il <b>${perc}%</b> delle tue ${r.target} kcal giornaliere. Te ne restano circa ${Math.max(0,r.target-Math.round(tot.k))} per il resto della giornata.</div><div class="bar"><i style="width:${Math.min(100,perc)}%;background:var(--acc)"></i></div><div class="tag">Se scegli il tipo di pasto qui sopra, ti dico anche se è in linea con il piano.</div>`}
   else if(righe.length){
     const tg=Math.round(r.target*sc.share),diff=tot.k-tg,pct=diff/tg,pt=r.prot*sc.share,nome=sc.nome.replace(/^\S+\s/,'').toLowerCase();
     let t,cls;
@@ -552,7 +560,8 @@ function vPasto(){
 <div class="bar"><i style="width:${Math.min(100,tot.k/tg*100)}%;background:${cls==='ok'?'var(--acc)':'var(--warm)'}"></i></div>`}
   
   return `<div class="card"><h2>Calcola il pasto 🍽️</h2><p class="sub">Scegli un alimento, scrivi quanto ne mangi: ti dico le calorie e se il pasto è in linea con il piano.</p>
-<label for="pt">Che pasto è?</label><select id="pt" data-ptipo>${sl.map((x,i)=>`<option value="${i}" ${i===ti?'selected':''}>${x.nome}${r?` (circa ${Math.round(r.target*x.share)} kcal)`:''}</option>`).join('')}</select>
+<label for="pt">Che pasto è? (facoltativo)</label><select id="pt" data-ptipo><option value="-1" ${ti<0?'selected':''}>Qualsiasi pasto</option>${sl.map((x,i)=>`<option value="${i}" ${i===ti?'selected':''}>${x.nome}${r?` (circa ${Math.round(r.target*x.share)} kcal)`:''}</option>`).join('')}</select>
+${r?`<div class="tag" style="margin-top:8px">Calorie di riferimento del tuo piano (tocca per confrontare):</div><div>${sl.map((x,i)=>`<span class="chip ${i===ti?'on':''}" data-ptset="${i}">${x.nome} · ${Math.round(r.target*x.share)} kcal</span>`).join('')}</div>`:''}
 <label for="pfq">Cosa hai mangiato? Scrivilo qui</label><input id="pfq" data-pq autocomplete="off" placeholder="es. pasta, mela, pizza, yogurt…">
 <div id="psug" style="margin-top:6px"></div>
 <div id="pcust" class="warn" style="margin-top:10px" hidden><b>Non lo trovo.</b> Scrivi le calorie per 100 g (sono sulla confezione) e lo aggiungo: la prossima volta lo trovi da solo.
@@ -561,15 +570,15 @@ function vPasto(){
 <div><label for="pu">Unità</label><select id="pu">${unitHtml(null)}</select></div></div>
 <div class="btns"><span id="pmsg2" class="tag" style="color:var(--red)"></span><button class="btn" data-addpasto>＋ Aggiungi al pasto</button></div></div>
 <div class="card"><h3>Il tuo pasto</h3>
-${righe.length?righe.map((x,i)=>`<div class="kv"><span>${x.f.e} ${esc(x.f.n)} <span class="tag">${x.f.pz?Math.round(x.g/x.f.pz*10)/10+' pz · ':''}${Math.round(x.g)} g</span></span><span><b>${Math.round(x.k)} kcal</b> <button class="chip" data-delpasto="${i}" aria-label="Elimina">✕</button></span></div>`).join('')+`
+${righe.length?righe.map((x,i)=>`<div class="kv"><span>${x.f.e} ${esc(x.f.n)} <span class="tag">${qtaTxt(x.f,x.g)}</span></span><span><b>${Math.round(x.k)} kcal</b> <button class="chip" data-delpasto="${i}" aria-label="Elimina">✕</button></span></div>`).join('')+`
 <div class="kv" style="font-size:17px"><b>Totale</b><b>${Math.round(tot.k)} kcal</b></div>
 <div class="tag">Proteine ${Math.round(tot.p)} g · Carboidrati ${Math.round(tot.c)} g · Grassi ${Math.round(tot.f)} g</div>${vd}
 <div class="btns"><span></span><button class="chip" data-clearpasto>Svuota il pasto</button></div>`:'<p class="sub">Ancora niente: aggiungi il primo alimento.</p>'}</div>`}
 
 /* ---------- MOTORE UI ---------- */
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-const VIEWS=[vProfilo,vAttivita,vFabb,vFrigo,vPiano,vPeso,vPasto];
-let showHome=false,dp=null;
+const VIEWS=[vProfilo,vAttivita,vFabb,vFrigo,vPiano,vPeso];
+let showHome=false,dp=null,showPasto=false;
 function vUtenti(){
   const forced=!reg.attivo;
   return `<div class="card" style="border-color:var(--acc)"><div class="top"><h2>${forced?'Chi sei? 👋':'👤 Utenti'}</h2>${forced?'':'<button class="chip" data-users aria-label="Chiudi">✕</button>'}</div>
@@ -593,22 +602,23 @@ function homeHtml(){
 <p class="sub">Così trovi l'icona sulla Home e la apri con un tocco, come un'app. Aprila prima dal browser, non dentro WhatsApp o altre app.</p>
 ${dp?'<button class="btn" data-install>Installa ora</button>':''}
 ${ios?(/CriOS/.test(ua)?bc+bi:bi+bc)+ba:and?ba+bi+bc:bi+bc+ba}</div>`}
+function pastoPannello(){return `<div class="top" style="margin-bottom:10px"><b style="font-size:18px">🍽️ Calcola pasto</b><button class="chip" data-pasto>✕ Chiudi</button></div>`+vPasto()}
 function render(keepScroll){
   const y=scrollY;
   const sb=$('#savebtn');if(sb)sb.hidden=!reg.attivo;
   const au=reg.lista.find(u=>u.id===reg.attivo);const ub=$('#utbtn');if(ub)ub.textContent='👤 '+(au?au.nome:'Utenti');
   $('#nav').innerHTML=!reg.attivo?'':STEPS.map((s,i)=>`<button class="${i===state.step?'on':''}" data-go="${i}">${s}</button>`).join('');
-  $('#main').innerHTML=(showUsers||!reg.attivo?vUtenti():'')+(reg.attivo?(showHome?homeHtml():'')+VIEWS[state.step]():'');
+  $('#main').innerHTML=showPasto?pastoPannello():(showUsers||!reg.attivo?vUtenti():'')+(reg.attivo?(showHome?homeHtml():'')+VIEWS[state.step]():'');
   if(keepScroll)scrollTo(0,y);else scrollTo(0,0);
   save();
 }
 function setPath(path,v){const [a,b]=path.split('.');state[a][b]=v}
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-seg],[data-act],[data-food],[data-dispensa],[data-addcustom],[data-save],[data-cp],[data-pick],[data-addpasto],[data-delpasto],[data-clearpasto],[data-users],[data-backup],[data-restore],[data-switch],[data-deluser],[data-newuser],[data-home],[data-install],[data-regen],[data-addpeso],[data-clearev],[data-delpeso],[data-print],[data-addfood]');
+  const t=e.target.closest('[data-go],[data-seg],[data-act],[data-food],[data-dispensa],[data-addcustom],[data-save],[data-cp],[data-ptset],[data-pasto],[data-pick],[data-addpasto],[data-delpasto],[data-clearpasto],[data-users],[data-backup],[data-restore],[data-switch],[data-deluser],[data-newuser],[data-home],[data-install],[data-regen],[data-addpeso],[data-clearev],[data-delpeso],[data-print],[data-addfood]');
   if(!t)return;
   if(e.target.closest('.cfg')&&t.dataset.act)return;
   const d=t.dataset;
-  if('go' in d){state.step=+d.go;render()}
+  if('go' in d){showPasto=false;state.step=+d.go;render()}
   else if('seg' in d){setPath(d.seg,d.v);render(true)}
   else if('act' in d){const id=d.act;if(state.attivita[id])delete state.attivita[id];else state.attivita[id]={giorni:2,minuti:60};render(true)}
   else if('food' in d){if(state.frigo[d.food])delete state.frigo[d.food];else state.frigo[d.food]={q:''};$('#grid').innerHTML=gridHtml();$('#stock').innerHTML=stockList();save()}
@@ -636,7 +646,9 @@ document.addEventListener('click',e=>{
     try{ok=!!reg.attivo&&localStorage.getItem(KU(reg.attivo))===JSON.stringify(state)}catch(e){}
     const tt=$('#toast');tt.textContent=ok?'✅ Dati salvati su questo telefono.':'⚠️ Il browser non permette di salvare qui: usa «Copia i miei dati» in 👤 Utenti.';tt.hidden=false;
     clearTimeout(window._tt);window._tt=setTimeout(()=>{tt.hidden=true},2600)}
-  else if('cp' in d){const [di,mi]=d.cp.split('-'),m=lastPlan[+di].meals[+mi];state.pasto.tipo=+mi;state.pasto.righe=m.items.map(i=>({id:i.food.id,g:i.g}));state.step=6;render()}
+  else if('cp' in d){const [di,mi]=d.cp.split('-'),m=lastPlan[+di].meals[+mi];state.pasto.tipo=+mi;state.pasto.righe=m.items.map(i=>({id:i.food.id,g:i.g}));showPasto=true;render()}
+  else if('ptset' in d){state.pasto.tipo=state.pasto.tipo===+d.ptset?-1:+d.ptset;render(true)}
+  else if('pasto' in d){showPasto=!showPasto;showUsers=false;showHome=false;render(false)}
   else if('pick' in d){pSel=d.pick;const f=byId(pSel);$('#pfq').value=f.n;$('#pu').innerHTML=unitHtml(f);aggiornaSug();$('#pq').focus()}
   else if('addpasto' in d){
     const q=$('#pfq').value.trim(),qt=num($('#pq').value),u=$('#pu').value,msg=$('#pmsg2');
@@ -644,7 +656,7 @@ document.addEventListener('click',e=>{
     if(!f&&q){const m=cerca(q);const ex=m.find(x=>norm(x.n)===norm(q));if(ex)f=ex;else if(m.length===1)f=m[0];else if(m.length>1){msg.textContent="Tocca l'alimento giusto nella lista qui sopra.";return}}
     if(!f&&q){const kc=num($('#pkc').value);if(kc>0){f=F('c'+Date.now(),q.charAt(0).toUpperCase()+q.slice(1),'🍽️','ALT',kc,num($('#pkp').value)||0,num($('#pkch').value)||0,num($('#pkf').value)||0,'cps',100,5,2000);FOODS.push(f);state.custom.push(f)}else{msg.textContent='Non lo trovo: scrivi le kcal per 100 g qui sopra.';return}}
     if(!f||!(qt>0)){msg.textContent='Scrivi cosa hai mangiato e la quantità.';return}
-    pSel=null;state.pasto.righe.push({id:f.id,g:Math.round((u==='pz'&&f.pz?qt*f.pz:qt)*10)/10});render(true)}
+    pSel=null;state.pasto.righe.push({id:f.id,g:Math.round(convG(f,qt,u)*10)/10});render(true)}
   else if('delpasto' in d){state.pasto.righe.splice(+d.delpasto,1);render(true)}
   else if('clearpasto' in d){state.pasto.righe=[];render(true)}
   else if('users' in d){showUsers=!showUsers;confDel=null;render(false)}
