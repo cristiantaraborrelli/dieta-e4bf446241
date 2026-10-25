@@ -27,9 +27,9 @@ header h1{margin:0;font-size:22px}
 header p{margin:2px 0 0;opacity:.85;font-size:14px}
 nav{display:flex;gap:6px;overflow-x:auto;margin-top:12px}
 nav button{flex:1 1 0;background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:14px;padding:11px 2px;font-size:13px;cursor:pointer;text-align:center;white-space:nowrap}
-body[data-area="pasto"]{--acc:#d4690b;--acc2:#fdefdc;--h1:#f29a3d;--h2:#b85c0b}
-body[data-area="peso"]{--acc:#2b7de0;--acc2:#e4effd;--h1:#3b8ff0;--h2:#1d5db0}
-body[data-area="obiettivo"]{--acc:#8b4fd6;--acc2:#efe6fb;--h1:#a068e8;--h2:#6a33b0}
+body[data-tema="pasto"]{--acc:#d4690b;--acc2:#fdefdc;--h1:#f29a3d;--h2:#b85c0b}
+body[data-tema="peso"]{--acc:#2b7de0;--acc2:#e4effd;--h1:#3b8ff0;--h2:#1d5db0}
+body[data-tema="obiettivo"]{--acc:#8b4fd6;--acc2:#efe6fb;--h1:#a068e8;--h2:#6a33b0}
 .subnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .subnav button{border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:20px;padding:8px 14px;font-size:14px;cursor:pointer}
 .subnav button.on{border-color:var(--acc);background:var(--acc2);font-weight:700}
@@ -171,7 +171,7 @@ const BASE_DISPENSA=['olio','pasta','riso','pane','latte','biscotti','parmigiano
 const byId=id=>FOODS.find(f=>f.id===id);
 
 /* ---------- STATO ---------- */
-const DEF={step:0,seed:1,profile:{nome:'Giacomo',sesso:'m',eta:'',peso:'',altezza:'',vita:'leggera',obiettivo:'mantenere'},attivita:{},frigo:{},custom:[],opz:{giorni:1,pasti:5,aggiusta:0},ricerca:'',pesi:[],evento:{nome:'',data:'',min:'',max:''},pasto:{tipo:-1,righe:[]},area:'piano',noSport:false,fatto:false,modifica:false};
+const DEF={step:0,seed:1,profile:{nome:'Giacomo',sesso:'m',eta:'',peso:'',altezza:'',vita:'leggera',obiettivo:'mantenere'},attivita:{},frigo:{},custom:[],opz:{giorni:1,pasti:5,aggiusta:0},ricerca:'',pesi:[],evento:{nome:'',data:'',min:'',max:''},pasto:{tipo:-1,righe:[]},area:'piano',noSport:false,fatto:false,modifica:false,pianoData:'',pianoSig:'',pianoAgg:false};
 let _db=null;
 function idb(){return _db||(_db=new Promise((res,rej)=>{try{const q=indexedDB.open('dietaDB',1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)}catch(e){rej(e)}}))}
 function idbSet(k,v){idb().then(db=>{db.transaction('kv','readwrite').objectStore('kv').put(v,k)}).catch(()=>{})}
@@ -265,16 +265,17 @@ function vFabb(){
   const bar=(l,g,kc,col)=>`<div class="kv"><span>${l}</span><b>${g} g</b></div><div class="bar"><i style="width:${Math.round(kc/tot*100)}%;background:${col}"></i></div>`;
   return `${warn.map(w=>`<div class="warn">⚠️ ${w}</div>`).join('')}
 <div class="card" style="text-align:center"><p class="sub" style="margin:0">${esc(p.nome)}, ogni giorno ti servono circa</p><div class="big">${r.target}</div><p class="sub" style="margin:4px 0 0">kcal al giorno</p></div>
-<div class="card"><h3>Come ci siamo arrivati</h3>
+<div class="card"><h3>Come dividerle</h3>
+${bar('Proteine',r.prot,r.prot*4,'#e5533d')}${bar('Carboidrati',r.carb,r.carb*4,'#f59e0b')}${bar('Grassi',r.fat,r.fat*9,'#3b82f6')}</div>
+<details class="card" ${state.apriCalc?'open':''}><summary style="cursor:pointer;font-weight:700">Come ci siamo arrivati · regola a mano</summary>
 <div class="kv"><span>Metabolismo a riposo</span><b>${r.bmr} kcal</b></div>
 <div class="kv"><span>Vita di ogni giorno</span><b>+ ${r.vita} kcal</b></div>
 <div class="kv"><span>Sport e attività (media al giorno, ${r.ore.toFixed(1)} h/sett.)</span><b>+ ${r.sport} kcal</b></div>
 <div class="kv"><span>Obiettivo</span><b>${r.obj>=0?'+':''} ${r.obj} kcal</b></div>
 <div class="kv"><span>Correzione manuale</span><b>${state.opz.aggiusta>=0?'+':''}${state.opz.aggiusta} kcal</b></div>
 <label>Regola a mano (se senti di avere più o meno fame)</label>
-<input type="range" min="-500" max="500" step="50" data-aggiusta value="${state.opz.aggiusta}"></div>
-<div class="card"><h3>Come dividerle</h3>
-${bar('Proteine',r.prot,r.prot*4,'#e5533d')}${bar('Carboidrati',r.carb,r.carb*4,'#f59e0b')}${bar('Grassi',r.fat,r.fat*9,'#3b82f6')}</div>`}
+<input type="range" min="-500" max="500" step="50" data-aggiusta value="${state.opz.aggiusta}"></details>
+`}
 
 function gridHtml(){
   const q=state.ricerca.toLowerCase();
@@ -428,7 +429,8 @@ function vPiano(){
   const r=fabb();
   if(!r)return vFabb();
   const days=buildPlan(r,true);lastPlan=days;
-  return vFabb()+`<h3 style="margin:18px 0 8px">Il tuo piano dei pasti</h3>`+opzHtml()+giorniHtml(days,r,true)+`
+  const creato=state.fatto?`<div class="card" style="border-color:var(--acc);background:var(--acc2)"><b>✅ Il tuo piano è creato</b><div class="tag" style="margin-top:2px">${state.pianoData?(state.pianoAgg?'Aggiornato il ':'Creato il ')+fd(state.pianoData)+' · ':''}${r.target} kcal al giorno · ${state.opz.pasti} pasti al giorno</div></div>`:'';
+  return creato+vFabb()+`<h3 style="margin:18px 0 8px">Il tuo piano dei pasti</h3>`+opzHtml()+giorniHtml(days,r,true)+`
 <div class="btns noprint"><button class="btn sec" data-regen>🔄 Altre idee</button><button class="btn" data-print>🖨️ Stampa</button></div>
 <div class="card noprint"><h3>Non hai tutti gli ingredienti?</h3><p class="sub">Scrivi quello che hai nel frigorifero: ti dico se puoi rispettare il piano.</p><button class="btn" data-go="3">🧊 Apri il frigorifero</button></div>`}
 function opzHtml(){const o=state.opz;return `<div class="card noprint"><div class="row">
@@ -665,6 +667,15 @@ ${r?`<div class="kv"><span>Calorie al giorno</span><b>${r.target} kcal</b></div>
 <div class="card"><div class="btns" style="margin:0"><span class="tag">Metti l'app sull'icona della Home del telefono.</span><button class="chip" data-home>📲 Aggiungi alla Home</button></div>
 <div class="btns"><span class="tag">Elimina l'utente e tutti i suoi dati da questo telefono.</span><button class="chip" data-deluser="${reg.attivo}">${confDel===reg.attivo?'Sicuro? Tocca di nuovo per eliminare':'🗑 Elimina questo utente'}</button></div></div>`}
 
+function sigDati(){const p=state.profile;return JSON.stringify([p.sesso,p.eta,p.peso,p.altezza,p.vita,p.obiettivo,state.attivita,state.noSport,state.opz.aggiusta])}
+/* se i dati cambiano (anche dal Peso) il piano si aggiorna da solo */
+function aggiornaPianoSeServe(){
+  if(!state.fatto||state.modifica)return;
+  const sg=sigDati();
+  if(!state.pianoSig){state.pianoSig=sg;return}
+  if(sg!==state.pianoSig){state.pianoSig=sg;state.pianoData=oggi();state.pianoAgg=true;state.seed++}
+}
+
 /* ---------- MOTORE UI ---------- */
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 const VIEWS=[vProfilo,vAttivita,vFabb,vFrigo,vPiano,vPeso,vObiettivo,vDati];
@@ -696,14 +707,15 @@ function render(keepScroll){
   const y=scrollY;
   const sb=$('#savebtn');if(sb)sb.hidden=!reg.attivo;const me=$('#medit');if(me)me.hidden=!reg.attivo;
   const au=reg.lista.find(u=>u.id===reg.attivo);const ub=$('#utbtn');if(ub)ub.textContent='👤 '+(au?au.nome:'Utenti');
+  aggiornaPianoSeServe();
   const A0=AREE.find(x=>x.id===state.area)||AREE[0],A=Object.assign({},A0,{steps:stepsOf(A0)});
-  state.area=A.id;document.body.dataset.area=A.id;
+  state.area=A.id;document.body.dataset.tema=A.id;
   if(A.steps&&!A.steps.includes(state.step))state.step=A.steps[0];
-  $('#nav').innerHTML=AREE.map(x=>`<button class="${x.id===A.id?'on':''}" data-area="${x.id}">${x.nome}</button>`).join('');
+  $('#nav').innerHTML=AREE.map(x=>`<button class="${x.id===A.id?'on':''}" data-area="${x.id}">${x.nome}${x.id==='piano'&&reg.attivo?(state.fatto?' ✓':' ●'):''}</button>`).join('');
   let body;
   if(A.id==='pasto')body=(showUsers?vUtenti():'')+vPasto();
   else if(!reg.attivo)body=vUtenti();
-  else body=(showUsers?vUtenti():'')+(showHome?homeHtml():'')+(A.steps.length>1?`<div class="subnav">${A.steps.map(i=>`<button class="${i===state.step?'on':''}" data-go="${i}">${STEPS[i]}</button>`).join('')}</div>`:'')+(A.id==='piano'&&inModifica()?`<div id="compl">${completezzaHtml()}</div>`:'')+VIEWS[state.step]();
+  else body=(showUsers?vUtenti():'')+(showHome?homeHtml():'')+(A.id==='piano'&&state.fatto&&state.modifica?`<div class="warn">✏️ Stai modificando i dati. Quando hai finito tocca <b>Salva modifiche</b>: il piano si aggiorna con i dati nuovi.</div>`:'')+(!state.fatto&&A.id!=='piano'?`<div class="warn">👉 Prima crea il tuo piano: dati completati <b>${completezza().pct}/100</b>. <button class="chip" data-area="piano">Crea il mio piano</button></div>`:'')+(A.id==='piano'&&!state.fatto?`<div class="subnav"><button class="${state.step===0?'on':''}" data-go="0">1 · Dati</button><button class="${state.step===1?'on':''}" data-go="1">2 · Attività</button><button data-concludi>3 · Crea il piano</button></div>`:A.steps.length>1?`<div class="subnav">${A.steps.map(i=>`<button class="${i===state.step?'on':''}" data-go="${i}">${STEPS[i]}</button>`).join('')}</div>`:'')+(A.id==='piano'&&inModifica()?`<div id="compl">${completezzaHtml()}</div>`:'')+VIEWS[state.step]();
   $('#main').innerHTML=body;
   if(keepScroll)scrollTo(0,y);else scrollTo(0,0);
   save();
@@ -744,7 +756,7 @@ document.addEventListener('click',e=>{
     clearTimeout(window._tt);window._tt=setTimeout(()=>{tt.hidden=true},2600)}
   else if('cp' in d){const [di,mi]=d.cp.split('-'),m=lastPlan[+di].meals[+mi];state.pasto.tipo=+mi;state.pasto.righe=m.items.map(i=>({id:i.food.id,g:i.g}));state.area='pasto';render()}
   else if('ptset' in d){state.pasto.tipo=state.pasto.tipo===+d.ptset?-1:+d.ptset;render(true)}
-  else if('concludi' in d){const c=completezza();if(c.pct<100){$('#cmsg2').textContent='Mancano ancora: '+c.mancano.map(x=>x.k.toLowerCase()).join(', ')+'.';return}state.fatto=true;state.modifica=false;state.step=4;state.area='piano';render()}
+  else if('concludi' in d){const c=completezza();if(c.pct<100){$('#cmsg2').textContent='Mancano ancora: '+c.mancano.map(x=>x.k.toLowerCase()).join(', ')+'.';return}const eraFatto=state.fatto;state.fatto=true;state.modifica=false;state.pianoData=oggi();state.pianoAgg=eraFatto;state.pianoSig=sigDati();if(eraFatto)state.seed++;state.step=4;state.area='piano';render()}
   else if('modifica' in d){state.modifica=true;state.step=0;state.area='piano';showUsers=false;showHome=false;render(false)}
   else if('nosport' in d){state.noSport=!state.noSport;if(state.noSport)state.attivita={};render(true)}
   else if('vai' in d){const v=$('#verdetto');if(v)v.scrollIntoView({behavior:'smooth',block:'start'})}
@@ -794,7 +806,7 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   const t=e.target,d=t.dataset;
   if(d.o){state.opz[d.o]=+t.value;render(true)}
-  else if(d.aggiusta!==undefined){render(true)}
+  else if(d.aggiusta!==undefined){state.apriCalc=true;render(true)}
   else if(d.ev){render(true)}
   else if(d.ptipo!==undefined){state.pasto.tipo=+t.value;render(true)}
   else if(d.pf!==undefined){$('#pu').innerHTML=unitHtml(byId(t.value))}
