@@ -1,0 +1,62 @@
+{
+  "aggiornato": "2026-10-25",
+  "negozi": {
+    "Ipercarni": {
+      "punto": "Formello",
+      "valido_dal": "2026-10-23",
+      "valido_al": "2026-11-03",
+      "prezzi": {
+        "pollo": 7.99, "manzo": 12.99, "merluzzo": 13.21, "prosciutto": 7.90, "bresaola": 29.90,
+        "mozzarella": 7.17, "ricotta": 3.96, "uovo": 4.97, "latte": 0.89, "pasta": 1.78,
+        "biscotti": 2.50, "pane": 2.30, "cereali": 7.17, "patate": 0.99, "insalata": 1.49,
+        "funghi": 5.97, "mela": 1.79, "fagiolini": 5.82, "miste": 4.98, "parmigiano": 18.90
+      },
+      "note": {
+        "pollo": "Rollini di pollo PrestoPronto, 7,99 €/kg (-20%)",
+        "manzo": "Arrosto di manzo, 12,99 €/kg",
+        "merluzzo": "Cuori di filetto di merluzzo Frosta 340 g, 4,49 €",
+        "prosciutto": "Prosciutto cotto Vellutato Fiorucci, 0,79 € all'etto",
+        "bresaola": "Bresaola punta d'anca Rigamonti, 2,99 € all'etto",
+        "mozzarella": "Mozzarella Santa Lucia 3x125 g, 2,69 €",
+        "ricotta": "Ricotta Santa Lucia 250 g, 0,99 €",
+        "uovo": "Uova L allevate a terra Amadori x6, 1,79 €",
+        "latte": "Latte UHT scremato Centrale Latte Roma 1 l, 0,89 €",
+        "pasta": "Pasta di semola Voiello 500 g, 0,89 €",
+        "biscotti": "Biscotti Oro Saiwa 2 kg, 4,99 €",
+        "pane": "Pancarrè Mulino Bianco 430 g, 0,99 €",
+        "cereali": "Special K Kellogg's 375 g, 2,69 €",
+        "patate": "Patate gialle 1,5 kg, 1,49 €",
+        "insalata": "Lattuga trocadero, 1,49 €/kg",
+        "funghi": "Funghi champignon affettati 300 g, 1,79 €",
+        "mela": "Mele Granny Smith e Fuji, 1,79 €/kg",
+        "fagiolini": "Fagiolini Findus 600 g (surgelati), 3,49 €",
+        "miste": "Verdure grigliate Orogel 400 g (surgelate), 1,99 €",
+        "parmigiano": "Grana Padano grattugiato Soresina 100 g, 1,89 €"
+      }
+    },
+    "Conad": {
+      "punto": "Spazio Conad, Via A. Lionello, Roma",
+      "valido_dal": "2026-10-20",
+      "valido_al": "2026-11-02",
+      "prezzi": {
+        "mela": 1.98, "arancia": 1.85, "mandarini": 2.19, "banana": 1.29, "zucchine": 1.79,
+        "uva": 3.97, "tacchino": 11.90, "parmigiano": 20.90, "prosciutto": 6.60,
+        "merluzzo": 7.66, "pasta": 1.50, "latte": 0.75
+      },
+      "note": {
+        "mela": "Mele Golden, 1,98 €/kg",
+        "arancia": "Arance Navel, 1,85 €/kg",
+        "mandarini": "Clementine, 2,19 €/kg",
+        "banana": "Banane Dole, 1,29 €/kg",
+        "zucchine": "Zucchine verdi, 1,79 €/kg",
+        "uva": "Uva bianca senza semi 750 g, 2,98 €",
+        "tacchino": "Fesa di tacchino a fette, formato convenienza, 11,90 €/kg",
+        "parmigiano": "Parmigiano Reggiano 24 mesi, 2,09 € all'etto",
+        "prosciutto": "Prosciutto cotto scelto Casa Modena, 3 etti a 1,98 €",
+        "merluzzo": "Filetti di merluzzo 900 g (surgelati), 6,89 €",
+        "pasta": "Pasta di semola La Molisana 500 g, 4 pezzi a 2,99 €",
+        "latte": "Latte UHT parzialmente scremato Granarolo 1 l, 4 pezzi a 2,99 €"
+      }
+    }
+  }
+}

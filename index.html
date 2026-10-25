@@ -171,7 +171,7 @@ const BASE_DISPENSA=['olio','pasta','riso','pane','latte','biscotti','parmigiano
 const byId=id=>FOODS.find(f=>f.id===id);
 
 /* ---------- STATO ---------- */
-const DEF={step:0,seed:1,profile:{nome:'Giacomo',sesso:'m',eta:'',peso:'',altezza:'',vita:'leggera',obiettivo:'mantenere'},attivita:{},frigo:{},custom:[],opz:{giorni:1,pasti:5,aggiusta:0},ricerca:'',pesi:[],evento:{nome:'',data:'',min:'',max:''},pasto:{tipo:-1,righe:[]},area:'piano',noSport:false,fatto:false,modifica:false,pianoData:'',pianoSig:'',pianoAgg:false,prezzi:{},budget:'',economico:false,spesaOk:{}};
+const DEF={step:0,seed:1,profile:{nome:'Giacomo',sesso:'m',eta:'',peso:'',altezza:'',vita:'leggera',obiettivo:'mantenere'},attivita:{},frigo:{},custom:[],opz:{giorni:1,pasti:5,aggiusta:0},ricerca:'',pesi:[],evento:{nome:'',data:'',min:'',max:''},pasto:{tipo:-1,righe:[]},area:'piano',noSport:false,fatto:false,modifica:false,pianoData:'',pianoSig:'',pianoAgg:false,prezzi:{},budget:'',economico:false,spesaOk:{},volantini:{},volData:{},negozio:'min'};
 let _db=null;
 function idb(){return _db||(_db=new Promise((res,rej)=>{try{const q=indexedDB.open('dietaDB',1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)}catch(e){rej(e)}}))}
 function idbSet(k,v){idb().then(db=>{db.transaction('kv','readwrite').objectStore('kv').put(v,k)}).catch(()=>{})}
@@ -682,7 +682,24 @@ const PREZZI={uovo:5,pollo:8.5,tacchino:9.5,manzo:12,salmone:19,merluzzo:13,tonn
 latte:1.5,yogurtgreco:5.5,yogurt:3,pasta:1.8,riso:2.5,cous:3.5,quinoa:8,patate:1.5,pane:3.5,paneint:4,piadina:7,avena:3.5,cereali:5,fette:4.5,biscotti:5,gallette:6,crackers:5,
 insalata:4,pomodori:3,zucchine:2.5,carote:1.5,spinaci:5,broccoli:3,cetrioli:2.5,peperoni:4,melanzane:3,funghi:7,fagiolini:4,miste:3.5,
 banana:2,mela:2,pera:2.5,arancia:1.8,kiwi:3.5,mandarini:2.5,fragole:6,uva:3.5,fruttasecca:14,mandorle:13,noci:14,miele:11,marmellata:5,arachidi:9,fondente:14,olio:9,avocado:8,parmigiano:20};
-function prezzoKg(f){const v=state.prezzi[f.id];if(v!==undefined&&v!==''){const n=parseFloat(String(v).replace(',','.'));if(n>=0)return n}return PREZZI[f.id]||0}
+let _noVol=false;
+let OFFERTE=null;
+function fonti(){
+  const m={};
+  const add=(st,pr,al,note)=>{m[st]=m[st]||{prezzi:{},al:'',note:{},punto:''};for(const id in pr){const p=pr[id];if(p>0&&(!m[st].prezzi[id]||p<m[st].prezzi[id])){m[st].prezzi[id]=p;if(note&&note[id])m[st].note[id]=note[id]}}if(al)m[st].al=al};
+  const V=state.volantini||{};for(const st in V)add(st,V[st],'',null);
+  if(OFFERTE&&OFFERTE.negozi)for(const st in OFFERTE.negozi){const o=OFFERTE.negozi[st];if(o.valido_al&&o.valido_al<oggi())continue;add(st,o.prezzi||{},o.valido_al,o.note||null);if(o.punto)m[st].punto=o.punto}
+  return m}
+function prezzoVol(f){const F=fonti();let best=null;for(const st in F){if(state.negozio!=='min'&&st!==state.negozio)continue;const p=F[st].prezzi[f.id];if(p>0&&(!best||p<best.p))best={p,store:st,al:F[st].al,nota:(F[st].note||{})[f.id]||'',punto:F[st].punto||''}}return best}
+function prezzoKg(f){const v=state.prezzi[f.id];if(v!==undefined&&v!==''){const n=parseFloat(String(v).replace(',','.'));if(n>=0)return n}if(!_noVol){const pv=prezzoVol(f);if(pv)return pv.p}return PREZZI[f.id]||0}
+function volTag(f){const o=state.prezzi[f.id];if(o!==undefined&&o!==''){return `<span class="tag">✏️ prezzo tuo</span>`}const p=prezzoVol(f);
+  return p?`<div class="tag" style="color:var(--acc);font-weight:600">🏷️ Compra da ${esc(p.store)}${p.punto?' ('+esc(p.punto)+')':''} · ${eur(p.p)}/kg${p.al?' · fino al '+fd(p.al):''}</div>${p.nota?`<div class="tag">${esc(p.nota)}</div>`:''}`:`<div class="tag">Prezzo standard (nessuna offerta)</div>`}
+function doveHtml(A){
+  const g={};
+  A.rows.filter(x=>x.da).forEach(x=>{const o=state.prezzi[x.f.id];const pv=(o!==undefined&&o!=='')?null:prezzoVol(x.f);const k=pv?pv.store:'Dove capita';(g[k]=g[k]||{n:0,tot:0,al:pv?pv.al:''}).n++;g[k].tot+=x.costo;if(pv&&pv.al&&(!g[k].al||pv.al<g[k].al))g[k].al=pv.al});
+  const ks=Object.keys(g).sort((a,b)=>(a==='Dove capita')-(b==='Dove capita')||g[b].tot-g[a].tot);
+  if(!ks.length)return '';
+  return `<h3 style="margin:0 0 6px">🛒 Dove comprare</h3>`+ks.map(k=>`<div class="kv"><span><b>${k==='Dove capita'?'Un negozio qualsiasi':esc(k)}</b><br><span class="tag">${g[k].n} prodotti${g[k].al?' · offerte fino al '+fd(g[k].al):''}</span></span><b>${eur(g[k].tot)}</b></div>`).join('')}
 const eur=x=>x.toFixed(2).replace('.',',')+' €';
 function spesaCalc(eco){
   const r=fabb();if(!r)return null;
@@ -716,12 +733,15 @@ function spesaSumHtml(){
     else{cls='no';stato=`⚠️ Superi il budget di circa <b>${eur(A.tot-bud)}</b>.`+(!state.economico&&eco.tot<=bud?' Con il piano economico ci stai dentro: toccalo qui sotto.':(state.economico?' Anche col piano economico: alza il budget o togli qualcosa.':''))}
     stato=`<div class="bar" style="margin:8px 0"><i style="width:${Math.min(100,perc)}%;background:${cls==='ok'?'var(--acc)':'var(--red)'}"></i></div><div style="font-size:14px">${stato}</div>`
   }else stato='<div class="tag" style="margin-top:6px">Scrivi il tuo budget settimanale per sapere se ci stai dentro.</div>';
+  let volTxt='';
+  if(Object.keys(state.volantini||{}).length){_noVol=true;let base=0;try{base=spesaCalc(state.economico).tot}finally{_noVol=false}
+    const dv=base-A.tot;if(Math.abs(dv)>0.5)volTxt=`<div class="tag" style="margin-top:8px">🏷️ Con i prezzi dei volantini ${dv>0?'risparmi circa '+eur(dv):'spendi circa '+eur(-dv)+' in più'} rispetto ai prezzi standard.</div>`}
   const risp=norm.tot-eco.tot;
   return `<div style="font-size:30px;font-weight:700;color:var(--acc)">${eur(A.tot)}</div><div class="tag">spesa stimata per 7 giorni (${state.economico?'piano economico':'piano normale'})</div>${stato}
-${risp>0.5?`<div class="tag" style="margin-top:8px">Il piano economico costa circa ${eur(risp)} in meno.</div>`:''}`}
+${risp>0.5?`<div class="tag" style="margin-top:8px">Il piano economico costa circa ${eur(risp)} in meno.</div>`:''}${volTxt}`}
 function updSpesa(){
   const A=spesaCalc(state.economico);if(!A)return;
-  const x=$('#spesaSum');if(x)x.innerHTML=spesaSumHtml();
+  const x=$('#spesaSum');if(x)x.innerHTML=spesaSumHtml();const dv=$('#spesaDove');if(dv)dv.innerHTML=doveHtml(A);
   A.rows.forEach(r=>{const c=$('#cs_'+r.f.id);if(c)c.textContent=r.da?eur(r.costo):'—'});
 }
 function vSpesa(){
@@ -734,15 +754,94 @@ function vSpesa(){
     if(!rr.length)return '';
     return `<h3 style="margin:14px 0 4px">${ROLES[role]}</h3>`+rr.map(x=>{const ok=!!state.spesaOk[x.f.id];
       return `<div class="fr" style="grid-template-columns:auto 1fr 74px 64px;gap:8px${ok?';opacity:.55':''}"><input type="checkbox" style="width:auto" data-sp="${x.f.id}" ${ok?'checked':''} aria-label="Preso">
-<span style="${ok?'text-decoration:line-through':''}">${x.f.e} ${esc(x.f.n)}<br><span class="tag">${x.da?qt(x):''} ${esc(x.nota||'')}</span></span>
-<input type="text" inputmode="decimal" data-prezzo="${x.f.id}" value="${esc(state.prezzi[x.f.id]!==undefined&&state.prezzi[x.f.id]!==''?state.prezzi[x.f.id]:(PREZZI[x.f.id]||''))}" placeholder="€/kg" aria-label="Prezzo al chilo" style="padding:6px;font-size:14px">
+<span style="${ok?'text-decoration:line-through':''}">${x.f.e} ${esc(x.f.n)}<br><span class="tag">${x.da?qt(x):''} ${esc(x.nota||'')}</span> ${volTag(x.f)}</span>
+<input type="text" inputmode="decimal" data-prezzo="${x.f.id}" value="${esc(state.prezzi[x.f.id]!==undefined&&state.prezzi[x.f.id]!==''?state.prezzi[x.f.id]:(prezzoKg(x.f)||''))}" placeholder="€/kg" aria-label="Prezzo al chilo" style="padding:6px;font-size:14px">
 <b id="cs_${x.f.id}" style="text-align:right;font-size:14px">${x.da?eur(x.costo):'—'}</b></div>`}).join('')}).join('');
   return `<div class="card"><h2>Lista della spesa 🛒</h2><p class="sub">Per i prossimi 7 giorni del tuo piano. Gli alimenti che hai già nel frigorifero non vengono contati.</p>
 <label for="bud">Il tuo budget settimanale (€)</label><input id="bud" type="text" inputmode="decimal" data-budget placeholder="es. 60" value="${esc(state.budget)}">
 <div id="spesaSum" style="margin-top:10px">${spesaSumHtml()}</div>
+<div id="spesaDove" style="margin-top:14px">${doveHtml(A)}</div>
 <div style="margin-top:10px"><button class="chip ${state.economico?'on':''}" data-eco>${state.economico?'✓ ':''}Piano economico</button> <span class="tag">sceglie gli alimenti che costano meno</span></div></div>
+${volantiniHtml()}
 <div class="card"><h3>Cosa comprare</h3><p class="sub">Spunta quello che hai preso. I prezzi sono stime al chilo (o al litro): se nel tuo negozio costano diversamente, cambiali e il totale si aggiorna.</p>${lista||'<p class="sub">Niente da comprare.</p>'}</div>
 <div class="btns"><button class="btn sec" data-go="4">← Il mio piano</button><span></span></div>`}
+
+/* ---------- IMPORTAZIONE VOLANTINI ---------- */
+let impRows=[],impMsg='';
+const KW={uovo:['uova','uovo'],pollo:['pollo'],tacchino:['tacchino'],manzo:['manzo','bovino','macinato'],salmone:['salmone'],merluzzo:['merluzzo','nasello','pesce bianco'],tonno:['tonno'],prosciutto:['prosciutto cotto'],bresaola:['bresaola'],mozzarella:['mozzarella','fiordilatte'],ricotta:['ricotta'],fiocchilatte:['fiocchi di latte'],ceci:['ceci'],lenticchie:['lenticchie'],fagioli:['fagioli'],tofu:['tofu'],latte:['latte'],yogurtgreco:['yogurt greco','greco'],yogurt:['yogurt'],pasta:['pasta','spaghetti','penne','fusilli','rigatoni'],riso:['riso'],cous:['cous cous','couscous'],quinoa:['quinoa'],patate:['patate'],pane:['pane'],paneint:['pane integrale'],piadina:['piadina','wrap'],avena:['avena'],cereali:['cereali','corn flakes'],fette:['fette biscottate'],biscotti:['biscotti'],gallette:['gallette'],crackers:['crackers'],insalata:['insalata','lattuga'],pomodori:['pomodori','pomodoro'],zucchine:['zucchine'],carote:['carote'],spinaci:['spinaci'],broccoli:['broccoli'],cetrioli:['cetrioli'],peperoni:['peperoni'],melanzane:['melanzane'],funghi:['funghi'],fagiolini:['fagiolini'],miste:['verdure miste','minestrone'],banana:['banane','banana'],mela:['mele','mela'],pera:['pere','pera'],arancia:['arance','arancia'],kiwi:['kiwi'],mandarini:['mandarini','clementine'],fragole:['fragole'],uva:['uva'],fruttasecca:['frutta secca'],mandorle:['mandorle'],noci:['noci'],miele:['miele'],marmellata:['marmellata','confettura'],arachidi:['arachidi'],fondente:['fondente'],olio:['olio extra','olio evo','olio di oliva'],avocado:['avocado'],parmigiano:['parmigiano','grana']};
+function kwRe(k){return new RegExp('(^|[^a-z])'+norm(k).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^a-z]|$)')}
+function trovaCibo(riga){
+  const n=norm(riga);let best=null;
+  for(const f of FOODS){if(f.role==='ALT')continue;
+    for(const k of (KW[f.id]||[f.n])){const m=kwRe(k).exec(n);if(m&&(!best||m.index<best.pos||(m.index===best.pos&&k.length>best.len)))best={f,pos:m.index,len:k.length}}}
+  return best?best.f:null}
+function trovaPrezzi(riga){
+  const re=/(\d{1,3}[.,]\d{2})(?!\d)(?!\s*(?:kg|gr?|ml|cl|lt|l|litri|%|pz))/gi;let m;const v=[];
+  while((m=re.exec(riga))){const n=parseFloat(m[1].replace(',','.'));if(n>0&&n<200)v.push(n)}
+  return v}
+function unitaRiga(r){
+  const n=norm(r);
+  if(/(^|[^a-z])(al|a|\/)\s*(kg|chilo|kilo)\b|(€|euro)\s*\/?\s*kg\b/.test(n))return{unit:'kg'};
+  if(/(^|[^a-z])(ogni|al|\/)\s*(100\s*g|etto|hg)\b/.test(n))return{unit:'hg'};
+  if(/(^|[^a-z])(al|\/)\s*(litro|l)(\s|$)/.test(n))return{unit:'kg'};
+  const p=/(\d+(?:[.,]\d+)?)\s*(kg|g|gr|ml|cl|l|lt)\b/.exec(n);
+  if(p){const q=parseFloat(p[1].replace(',','.')),u=p[2];const g=(u==='kg'||u==='l'||u==='lt')?q*1000:u==='cl'?q*10:q;if(g>=20)return{unit:'conf',conf:Math.round(g)}}
+  const e=/(\d+)\s*(uova|pz|pezzi)\b/.exec(n);if(e)return{unit:'conf',conf:Math.round(+e[1]*60)};
+  return{unit:'kg',dubbio:1}}
+function perKgRow(x){const p=parseFloat(String(x.price).replace(',','.'));if(!(p>0))return 0;const f=byId(x.id);
+  if(x.unit==='kg')return p;if(x.unit==='hg')return p*10;
+  if(x.unit==='conf'){const g=parseFloat(String(x.conf).replace(',','.'));return g>0?p/(g/1000):0}
+  if(x.unit==='pz'&&f&&f.pz)return p/(f.pz/1000);return 0}
+function analizzaVolantino(t){
+  const righe=String(t).split(/\n+/).map(x=>x.trim()).filter(x=>x.length>3);impRows=[];
+  for(let i=0;i<righe.length;i++){
+    let r=righe[i];const f=trovaCibo(r);if(!f)continue;
+    let pr=trovaPrezzi(r);
+    if(!pr.length&&righe[i+1]){pr=trovaPrezzi(righe[i+1]);r=r+' '+righe[i+1]}
+    if(!pr.length)continue;
+    const u=unitaRiga(r);
+    impRows.push({line:r.slice(0,140),id:f.id,price:String(Math.min(...pr)).replace('.',','),unit:u.unit,conf:u.conf||'',on:!u.dubbio,dubbio:!!u.dubbio});
+  }
+  impMsg=impRows.length?'':'Non ho trovato prezzi dei tuoi alimenti in questo testo. Puoi aggiungere le righe a mano.';
+  const res=$('#impRes');if(res)res.innerHTML=impHtml();const st=$('#impStato');if(st)st.textContent=''}
+function impHtml(){
+  const nuova=`<div class="btns"><button class="chip" data-impnew>＋ Aggiungi riga a mano</button>${impRows.length?'<button class="btn" data-impapply>Usa questi prezzi</button>':'<span></span>'}</div>`;
+  if(!impRows.length)return (impMsg?`<div class="tag" style="margin:8px 0">${impMsg}</div>`:'')+nuova;
+  const opts=id=>FOODS.filter(f=>f.role!=='ALT').map(f=>`<option value="${f.id}" ${f.id===id?'selected':''}>${esc(f.n)}</option>`).join('');
+  return `<div class="tag" style="margin:8px 0">Controlla le righe, correggi se serve e conferma. Togli la spunta a quelle sbagliate.</div>`+impRows.map((x,i)=>`<div style="border-top:1px solid var(--line);padding:8px 0"><label style="display:flex;gap:8px;align-items:flex-start;margin:0;color:var(--ink)"><input type="checkbox" style="width:auto;margin-top:3px" data-impon="${i}" ${x.on?'checked':''}> <span class="tag" style="word-break:break-word">${esc(x.line||'riga a mano')}</span></label>
+<div class="row" style="margin-top:6px"><select data-impid="${i}" aria-label="Alimento">${opts(x.id)}</select><input type="text" inputmode="decimal" data-impprezzo="${i}" value="${esc(x.price)}" aria-label="Prezzo"><select data-impunit="${i}" aria-label="Unità"><option value="kg" ${x.unit==='kg'?'selected':''}>€ al kg / litro</option><option value="hg" ${x.unit==='hg'?'selected':''}>€ ogni 100 g</option><option value="conf" ${x.unit==='conf'?'selected':''}>€ a confezione</option><option value="pz" ${x.unit==='pz'?'selected':''}>€ al pezzo</option></select>${x.unit==='conf'?`<input type="text" inputmode="numeric" data-impconf="${i}" value="${esc(x.conf)}" placeholder="grammi della confezione" aria-label="Grammi">`:''}</div>
+${x.dubbio?'<div class="tag" style="color:var(--red)">Unità non chiara: controlla il prezzo.</div>':''}<div class="tag">= ${eur(perKgRow(x))} al kg</div></div>`).join('')+nuova}
+function impApplica(){
+  const st=$('#impStore').value||'Altro';state.volantini[st]=state.volantini[st]||{};let n=0;
+  impRows.forEach(x=>{if(!x.on||!x.id)return;const p=perKgRow(x);if(p>0){state.volantini[st][x.id]=Math.round(p*100)/100;n++}});
+  state.volData[st]=oggi();impRows=[];impMsg=`✅ Importati ${n} prezzi da ${st}.`;state.apriImp=true;save();render(true)}
+function caricaPdfJs(){return new Promise((res,rej)=>{if(window.pdfjsLib)return res(window.pdfjsLib);const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';sc.onload=()=>{window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';res(window.pdfjsLib)};sc.onerror=()=>rej(new Error('pdfjs'));document.head.appendChild(sc)})}
+async function testoDaPdf(file){
+  const lib=await caricaPdfJs();const pdf=await lib.getDocument({data:await file.arrayBuffer()}).promise;const out=[];
+  for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p);const c=await pg.getTextContent();const rows={};
+    c.items.forEach(it=>{if(!it.str||!it.str.trim())return;const y=Math.round(it.transform[5]/5);(rows[y]=rows[y]||[]).push(it)});
+    Object.keys(rows).map(Number).sort((a,b)=>b-a).forEach(y=>out.push(rows[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')))}
+  return out.join('\n')}
+async function impDaFile(file){
+  const st=$('#impStato');if(st)st.textContent='Leggo il file…';
+  try{
+    const t=(/pdf$/i.test(file.name)||file.type==='application/pdf')?await testoDaPdf(file):await file.text();
+    if(!t||t.replace(/\s/g,'').length<40){impRows=[];impMsg='Non riesco a leggere testo in questo file: di solito i volantini sono fatti di sole immagini. Incolla il testo delle offerte oppure aggiungi le righe a mano.';const res=$('#impRes');if(res)res.innerHTML=impHtml();if(st)st.textContent='';return}
+    analizzaVolantino(t)
+  }catch(e){if(st)st.textContent='Non riesco ad aprire il file. Prova con il testo incollato.'}}
+function volantiniHtml(){
+  const F=fonti(),stores=Object.keys(F),propri=Object.keys(state.volantini||{});
+  const off=OFFERTE&&OFFERTE.negozi?Object.keys(OFFERTE.negozi):[];
+  return `<details class="card" ${state.apriImp||impRows.length||impMsg?'open':''}><summary style="cursor:pointer;font-weight:700">🏷️ Offerte e volantini (Conad, Ipercarni, Penny)</summary>
+<p class="sub" style="margin-top:8px">La lista usa sempre <b>il prezzo migliore</b> tra i volantini che hai. ${OFFERTE&&OFFERTE.aggiornato?`Le offerte controllate online sono aggiornate al ${fd(OFFERTE.aggiornato)}.`:''}</p>
+${stores.length?stores.map(st=>`<div class="kv"><span>🏷️ ${esc(st)} · ${Object.keys(F[st].prezzi).length} prezzi${F[st].al?' · fino al '+fd(F[st].al):''}</span>${propri.includes(st)?`<button class="chip" data-delvol="${esc(st)}" aria-label="Elimina i prezzi importati">🗑</button>`:'<span></span>'}</div>`).join('')+`<div style="margin:8px 0">Usa i prezzi di: <button class="chip ${state.negozio==='min'?'on':''}" data-negozio="min">Il più conveniente</button>${stores.map(st=>`<button class="chip ${state.negozio===st?'on':''}" data-negozio="${esc(st)}">${esc(st)}</button>`).join('')}</div>`:'<p class="sub">Ancora nessun volantino: importane uno qui sotto.</p>'}
+<h3 style="margin:14px 0 4px">📥 Importa un volantino</h3>
+<p class="sub">Apri il volantino: <a href="https://ipercarni.com/promozioni" target="_blank" rel="noopener">Ipercarni ↗</a> · <a href="https://www.conad.it/ricerca-negozi/spazio-conad-via-alberto-lionello-201-00139-roma--010169" target="_blank" rel="noopener">Conad ↗</a> · <a href="https://www.penny.it/sfoglia-il-volantino-mobile" target="_blank" rel="noopener">Penny ↗</a>. Scarica il PDF o copia il testo delle offerte e caricalo qui: ti propongo i prezzi dei tuoi alimenti e tu confermi. Il file resta sul tuo telefono.</p>
+<label for="impStore">Di quale negozio è?</label><select id="impStore"><option>Conad</option><option>Ipercarni</option><option>Penny</option><option>Altro</option></select>
+<label for="impFile">Carica il PDF o un file di testo</label><input id="impFile" type="file" accept=".pdf,.txt,.csv,application/pdf,text/plain" data-impfile>
+<label for="impTesto">Oppure incolla qui il testo delle offerte</label><textarea id="impTesto" rows="4" placeholder="es. Petto di pollo 7,90 € al kg"></textarea>
+<div class="btns"><span id="impStato" class="tag"></span><button class="btn sec" data-impanalizza>Analizza il testo</button></div>
+<div id="impRes">${impHtml()}</div></details>`}
 
 /* ---------- MOTORE UI ---------- */
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
@@ -790,7 +889,7 @@ function render(keepScroll){
 }
 function setPath(path,v){const [a,b]=path.split('.');state[a][b]=v}
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-seg],[data-act],[data-food],[data-dispensa],[data-addcustom],[data-save],[data-cp],[data-ptset],[data-concludi],[data-modifica],[data-eco],[data-nosport],[data-vai],[data-area],[data-pick],[data-addpasto],[data-delpasto],[data-clearpasto],[data-users],[data-backup],[data-restore],[data-switch],[data-deluser],[data-newuser],[data-home],[data-install],[data-regen],[data-addpeso],[data-clearev],[data-delpeso],[data-print],[data-addfood]');
+  const t=e.target.closest('[data-go],[data-seg],[data-act],[data-food],[data-dispensa],[data-addcustom],[data-save],[data-cp],[data-ptset],[data-concludi],[data-modifica],[data-impanalizza],[data-impnew],[data-impapply],[data-delvol],[data-negozio],[data-eco],[data-nosport],[data-vai],[data-area],[data-pick],[data-addpasto],[data-delpasto],[data-clearpasto],[data-users],[data-backup],[data-restore],[data-switch],[data-deluser],[data-newuser],[data-home],[data-install],[data-regen],[data-addpeso],[data-clearev],[data-delpeso],[data-print],[data-addfood]');
   if(!t)return;
   if(e.target.closest('.cfg')&&t.dataset.act)return;
   const d=t.dataset;
@@ -826,6 +925,11 @@ document.addEventListener('click',e=>{
   else if('ptset' in d){state.pasto.tipo=state.pasto.tipo===+d.ptset?-1:+d.ptset;render(true)}
   else if('concludi' in d){const c=completezza();if(c.pct<100){$('#cmsg2').textContent='Mancano ancora: '+c.mancano.map(x=>x.k.toLowerCase()).join(', ')+'.';return}const eraFatto=state.fatto;state.fatto=true;state.modifica=false;state.pianoData=oggi();state.pianoAgg=eraFatto;state.pianoSig=sigDati();if(eraFatto)state.seed++;state.step=4;state.area='piano';render()}
   else if('modifica' in d){state.modifica=true;state.step=0;state.area='piano';showUsers=false;showHome=false;render(false)}
+  else if('impanalizza' in d){analizzaVolantino($('#impTesto').value)}
+  else if('impnew' in d){impRows.push({line:'',id:'pollo',price:'',unit:'kg',conf:'',on:true,dubbio:false});$('#impRes').innerHTML=impHtml()}
+  else if('impapply' in d){impApplica()}
+  else if('delvol' in d){delete state.volantini[d.delvol];delete state.volData[d.delvol];if(state.negozio===d.delvol)state.negozio='min';save();render(true)}
+  else if('negozio' in d){state.negozio=d.negozio;save();render(true)}
   else if('eco' in d){state.economico=!state.economico;state.pianoData=state.pianoData;render(true)}
   else if('nosport' in d){state.noSport=!state.noSport;if(state.noSport)state.attivita={};render(true)}
   else if('vai' in d){const v=$('#verdetto');if(v)v.scrollIntoView({behavior:'smooth',block:'start'})}
@@ -876,13 +980,18 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   const t=e.target,d=t.dataset;
-  if(d.sp!==undefined){state.spesaOk[d.sp]=t.checked;save();render(true)}
+  if(d.impfile!==undefined){const fl=t.files&&t.files[0];if(fl)impDaFile(fl)}
+  else if(d.impon!==undefined||d.impid!==undefined||d.impprezzo!==undefined||d.impunit!==undefined||d.impconf!==undefined){
+    const i=+(d.impon??d.impid??d.impprezzo??d.impunit??d.impconf),x=impRows[i];
+    if(x){if(d.impon!==undefined)x.on=t.checked;else if(d.impid!==undefined)x.id=t.value;else if(d.impprezzo!==undefined)x.price=t.value;else if(d.impunit!==undefined)x.unit=t.value;else x.conf=t.value;$('#impRes').innerHTML=impHtml()}}
+  else if(d.sp!==undefined){state.spesaOk[d.sp]=t.checked;save();render(true)}
   else if(d.o){state.opz[d.o]=+t.value;render(true)}
   else if(d.aggiusta!==undefined){state.apriCalc=true;render(true)}
   else if(d.ev){render(true)}
   else if(d.ptipo!==undefined){state.pasto.tipo=+t.value;render(true)}
   else if(d.pf!==undefined){$('#pu').innerHTML=unitHtml(byId(t.value))}
 });
+fetch('offerte.json?v='+Date.now()).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.negozi){OFFERTE=j;if(reg.attivo)render(true)}}).catch(()=>{});
 render();
 </script>
 </body>
