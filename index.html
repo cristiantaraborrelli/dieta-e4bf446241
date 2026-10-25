@@ -81,7 +81,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 </head>
 <body>
 <header>
-  <div class="top"><h1>🥗 Dieta</h1><button id="utbtn" class="homebtn" data-users>👤 Utente</button></div>
+  <div class="top"><h1>🥗 Dieta</h1><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="medit" class="homebtn" data-modifica hidden>✏️ Modifica profilo</button><button id="utbtn" class="homebtn" data-users>👤 Utente</button></span></div>
   <p>Calcola le calorie della tua giornata e crea il piano con quello che hai in frigo.</p>
   <nav id="nav"></nav>
 </header>
@@ -92,8 +92,8 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 
 <script>
 const $=(s,r=document)=>r.querySelector(s);
-const STEPS=['Profilo','Attività','Fabbisogno','Frigorifero','Il mio piano','Peso','Obiettivo'];
-const AREE=[{id:'piano',nome:'📋 Piano',steps:[0,1,4,3]},{id:'pasto',nome:'🍽️ Pasto'},{id:'peso',nome:'⚖️ Peso',steps:[5]},{id:'obiettivo',nome:'🎯 Obiettivo',steps:[6]}];
+const STEPS=['Profilo','Attività','Fabbisogno','Frigorifero','Il mio piano','Peso','Obiettivo','I miei dati'];
+const AREE=[{id:'piano',nome:'📋 Piano',steps:[0,1,3,4,7]},{id:'pasto',nome:'🍽️ Pasto'},{id:'peso',nome:'⚖️ Peso',steps:[5]},{id:'obiettivo',nome:'🎯 Obiettivo',steps:[6]}];
 const areaOf=i=>(AREE.find(a=>a.steps&&a.steps.includes(i))||AREE[0]).id;
 const ROLES={PRO:'Proteine',CAR:'Carboidrati',VER:'Verdure',FRU:'Frutta',LAT:'Latte e yogurt',SEC:'Frutta secca',DOL:'Dolci e spalmabili',GRA:'Grassi e condimenti'};
 
@@ -171,7 +171,7 @@ const BASE_DISPENSA=['olio','pasta','riso','pane','latte','biscotti','parmigiano
 const byId=id=>FOODS.find(f=>f.id===id);
 
 /* ---------- STATO ---------- */
-const DEF={step:0,seed:1,profile:{nome:'Giacomo',sesso:'m',eta:'',peso:'',altezza:'',vita:'leggera',obiettivo:'mantenere'},attivita:{},frigo:{},custom:[],opz:{giorni:1,pasti:5,aggiusta:0},ricerca:'',pesi:[],evento:{nome:'',data:'',min:'',max:''},pasto:{tipo:-1,righe:[]},area:'piano'};
+const DEF={step:0,seed:1,profile:{nome:'Giacomo',sesso:'m',eta:'',peso:'',altezza:'',vita:'leggera',obiettivo:'mantenere'},attivita:{},frigo:{},custom:[],opz:{giorni:1,pasti:5,aggiusta:0},ricerca:'',pesi:[],evento:{nome:'',data:'',min:'',max:''},pasto:{tipo:-1,righe:[]},area:'piano',noSport:false,fatto:false,modifica:false};
 let _db=null;
 function idb(){return _db||(_db=new Promise((res,rej)=>{try{const q=indexedDB.open('dietaDB',1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)}catch(e){rej(e)}}))}
 function idbSet(k,v){idb().then(db=>{db.transaction('kv','readwrite').objectStore('kv').put(v,k)}).catch(()=>{})}
@@ -251,7 +251,9 @@ function vAttivita(){return `
 <div class="grid">${ACT.map(([id,n,e])=>{const a=state.attivita[id];return `<div class="act ${a?'on':''}" data-act="${id}"><div class="e">${e}</div><div class="n">${n}</div>
 <div class="cfg"><div><label>Volte/sett.</label><select data-af="${id}:giorni">${[1,2,3,4,5,6,7].map(x=>`<option ${a&&+a.giorni===x?'selected':''}>${x}</option>`).join('')}</select></div>
 <div><label>Minuti</label><input type="number" data-af="${id}:minuti" value="${a?a.minuti:60}" min="5" max="480" step="5"></div></div></div>`}).join('')}</div></div>
-<div class="btns"><button class="btn sec" data-go="0">← Indietro</button><button class="btn" data-go="4">Crea il mio piano →</button></div>`}
+<div class="btns"><span class="tag">Non fai nessuno sport?</span><button class="chip ${state.noSport?'on':''}" data-nosport>${state.noSport?'✓ ':''}Non faccio sport</button></div>
+<div class="btns"><span id="cmsg2" class="tag" style="color:var(--red)"></span></div>
+<div class="btns"><button class="btn sec" data-go="0">← Indietro</button><button class="btn" data-concludi>${state.modifica?'Salva modifiche →':'Crea il mio piano →'}</button></div>`}
 
 function vFabb(){
   const r=fabb();
@@ -615,9 +617,57 @@ ${righe.length?righe.map((x,i)=>`<div class="kv"><span>${x.f.e} ${esc(x.f.n)} <s
 <div class="tag">Proteine ${Math.round(tot.p)} g · Carboidrati ${Math.round(tot.c)} g · Grassi ${Math.round(tot.f)} g</div>${vd}
 <div class="btns"><span></span><button class="chip" data-clearpasto>Svuota il pasto</button></div>`:'<p class="sub">Ancora niente: aggiungi il primo alimento.</p>'}</div>`}
 
+/* ---------- COMPLETEZZA DATI ---------- */
+function completezza(){
+  const p=state.profile,n=x=>parseFloat(String(x).replace(',','.'));
+  const v=[
+    {k:'Nome',ok:!!String(p.nome).trim(),go:0},
+    {k:'Sesso',ok:p.sesso==='m'||p.sesso==='f',go:0},
+    {k:'Età',ok:n(p.eta)>=8&&n(p.eta)<=90,go:0},
+    {k:'Peso',ok:n(p.peso)>=20&&n(p.peso)<=250,go:0},
+    {k:'Altezza',ok:n(p.altezza)>=100&&n(p.altezza)<=230,go:0},
+    {k:'Giornata tipo',ok:!!p.vita,go:0},
+    {k:'Obiettivo',ok:!!p.obiettivo,go:0},
+    {k:'Attività',ok:Object.keys(state.attivita).length>0||state.noSport,go:1}
+  ];
+  const fatti=v.filter(x=>x.ok).length;
+  return{v,pct:Math.round(fatti/v.length*100),mancano:v.filter(x=>!x.ok)}
+}
+function completezzaHtml(){
+  const c=completezza();
+  const extra=[];
+  if(!state.pesi.length)extra.push('il peso di oggi (area Peso)');
+  if(!evOk())extra.push('un obiettivo con data (area Obiettivo)');
+  return `<div class="card" style="padding:12px 16px"><div class="top"><b>Dati dell'utente</b><b style="font-size:20px;color:var(--acc)">${c.pct}/100</b></div>
+<div class="bar" style="margin:8px 0"><i style="width:${c.pct}%"></i></div>
+${c.mancano.length?`<div class="tag" style="margin-bottom:4px">Manca ancora (tocca per completare):</div><div>${c.mancano.map(x=>`<span class="chip add" data-go="${x.go}">${x.k}</span>`).join('')}</div>`:'<div style="font-size:14px">✅ Dati completi: puoi creare il tuo piano.</div>'}
+${extra.length?`<div class="tag" style="margin-top:6px">Facoltativo: ${extra.join(' · ')}</div>`:''}</div>`}
+function updCompl(){const c=$('#compl');if(c)c.innerHTML=completezzaHtml()}
+
+/* ---------- DATI CONCLUSI: riepilogo e modifica ---------- */
+const inModifica=()=>!(state.fatto&&!state.modifica);
+const stepsOf=a=>a.id==='piano'?(inModifica()?[0,1]:[4,3,7]):a.steps;
+function vDati(){
+  const p=state.profile,r=fabb();
+  const VITA={sedentaria:'Seduto quasi sempre',leggera:'Normale',attiva:'Sempre in movimento'},OBI={mantenere:'Mantenere il peso',massa:'Mettere massa',dimagrire:'Perdere peso piano piano'};
+  const att=Object.keys(state.attivita).map(id=>{const a=ACT.find(x=>x[0]===id),o=state.attivita[id];return a?`<div class="kv"><span>${a[2]} ${a[1]}</span><b>${o.giorni}×/sett. · ${o.minuti} min</b></div>`:''}).join('');
+  return `<div class="card"><div class="top"><h2>I miei dati</h2><button class="chip" data-modifica>✏️ Modifica</button></div>
+<div class="kv"><span>Nome</span><b>${esc(p.nome)}</b></div>
+<div class="kv"><span>Sesso</span><b>${p.sesso==='m'?'Maschio':'Femmina'}</b></div>
+<div class="kv"><span>Età</span><b>${esc(p.eta)} anni</b></div>
+<div class="kv"><span>Peso</span><b>${esc(p.peso)} kg</b></div>
+<div class="kv"><span>Altezza</span><b>${esc(p.altezza)} cm</b></div>
+<div class="kv"><span>Giornata</span><b>${VITA[p.vita]||''}</b></div>
+<div class="kv"><span>Obiettivo</span><b>${OBI[p.obiettivo]||''}</b></div>
+<h3 style="margin:14px 0 4px">Attività</h3>${att||'<p class="sub">Nessuno sport.</p>'}
+${r?`<div class="kv"><span>Calorie al giorno</span><b>${r.target} kcal</b></div>`:''}
+<div class="tag" style="margin-top:8px">✅ Dati completi (100/100). Per cambiarli tocca Modifica.</div></div>
+<div class="card"><div class="btns" style="margin:0"><span class="tag">Metti l'app sull'icona della Home del telefono.</span><button class="chip" data-home>📲 Aggiungi alla Home</button></div>
+<div class="btns"><span class="tag">Elimina l'utente e tutti i suoi dati da questo telefono.</span><button class="chip" data-deluser="${reg.attivo}">${confDel===reg.attivo?'Sicuro? Tocca di nuovo per eliminare':'🗑 Elimina questo utente'}</button></div></div>`}
+
 /* ---------- MOTORE UI ---------- */
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-const VIEWS=[vProfilo,vAttivita,vFabb,vFrigo,vPiano,vPeso,vObiettivo];
+const VIEWS=[vProfilo,vAttivita,vFabb,vFrigo,vPiano,vPeso,vObiettivo,vDati];
 let showHome=false,dp=null;
 function vUtenti(){
   const forced=!reg.attivo;
@@ -644,29 +694,29 @@ ${dp?'<button class="btn" data-install>Installa ora</button>':''}
 ${ios?(/CriOS/.test(ua)?bc+bi:bi+bc)+ba:and?ba+bi+bc:bi+bc+ba}</div>`}
 function render(keepScroll){
   const y=scrollY;
-  const sb=$('#savebtn');if(sb)sb.hidden=!reg.attivo;
+  const sb=$('#savebtn');if(sb)sb.hidden=!reg.attivo;const me=$('#medit');if(me)me.hidden=!reg.attivo;
   const au=reg.lista.find(u=>u.id===reg.attivo);const ub=$('#utbtn');if(ub)ub.textContent='👤 '+(au?au.nome:'Utenti');
-  const A=AREE.find(x=>x.id===state.area)||AREE[0];
+  const A0=AREE.find(x=>x.id===state.area)||AREE[0],A=Object.assign({},A0,{steps:stepsOf(A0)});
   state.area=A.id;document.body.dataset.area=A.id;
   if(A.steps&&!A.steps.includes(state.step))state.step=A.steps[0];
   $('#nav').innerHTML=AREE.map(x=>`<button class="${x.id===A.id?'on':''}" data-area="${x.id}">${x.nome}</button>`).join('');
   let body;
   if(A.id==='pasto')body=(showUsers?vUtenti():'')+vPasto();
   else if(!reg.attivo)body=vUtenti();
-  else body=(showUsers?vUtenti():'')+(showHome?homeHtml():'')+(A.steps.length>1?`<div class="subnav">${A.steps.map(i=>`<button class="${i===state.step?'on':''}" data-go="${i}">${STEPS[i]}</button>`).join('')}</div>`:'')+VIEWS[state.step]();
+  else body=(showUsers?vUtenti():'')+(showHome?homeHtml():'')+(A.steps.length>1?`<div class="subnav">${A.steps.map(i=>`<button class="${i===state.step?'on':''}" data-go="${i}">${STEPS[i]}</button>`).join('')}</div>`:'')+(A.id==='piano'&&inModifica()?`<div id="compl">${completezzaHtml()}</div>`:'')+VIEWS[state.step]();
   $('#main').innerHTML=body;
   if(keepScroll)scrollTo(0,y);else scrollTo(0,0);
   save();
 }
 function setPath(path,v){const [a,b]=path.split('.');state[a][b]=v}
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-seg],[data-act],[data-food],[data-dispensa],[data-addcustom],[data-save],[data-cp],[data-ptset],[data-vai],[data-area],[data-pick],[data-addpasto],[data-delpasto],[data-clearpasto],[data-users],[data-backup],[data-restore],[data-switch],[data-deluser],[data-newuser],[data-home],[data-install],[data-regen],[data-addpeso],[data-clearev],[data-delpeso],[data-print],[data-addfood]');
+  const t=e.target.closest('[data-go],[data-seg],[data-act],[data-food],[data-dispensa],[data-addcustom],[data-save],[data-cp],[data-ptset],[data-concludi],[data-modifica],[data-nosport],[data-vai],[data-area],[data-pick],[data-addpasto],[data-delpasto],[data-clearpasto],[data-users],[data-backup],[data-restore],[data-switch],[data-deluser],[data-newuser],[data-home],[data-install],[data-regen],[data-addpeso],[data-clearev],[data-delpeso],[data-print],[data-addfood]');
   if(!t)return;
   if(e.target.closest('.cfg')&&t.dataset.act)return;
   const d=t.dataset;
   if('go' in d){state.step=+d.go;state.area=areaOf(+d.go);showUsers=false;render()}
   else if('seg' in d){setPath(d.seg,d.v);render(true)}
-  else if('act' in d){const id=d.act;if(state.attivita[id])delete state.attivita[id];else state.attivita[id]={giorni:2,minuti:60};render(true)}
+  else if('act' in d){const id=d.act;if(state.attivita[id])delete state.attivita[id];else{state.attivita[id]={giorni:2,minuti:60};state.noSport=false}render(true)}
   else if('food' in d){if(state.frigo[d.food])delete state.frigo[d.food];else state.frigo[d.food]={q:''};$('#grid').innerHTML=gridHtml();$('#stock').innerHTML=stockList();updVerd();save()}
   else if('dispensa' in d){BASE_DISPENSA.forEach(id=>{if(!state.frigo[id])state.frigo[id]={q:''}});render(true)}
   else if('addcustom' in d){
@@ -694,6 +744,9 @@ document.addEventListener('click',e=>{
     clearTimeout(window._tt);window._tt=setTimeout(()=>{tt.hidden=true},2600)}
   else if('cp' in d){const [di,mi]=d.cp.split('-'),m=lastPlan[+di].meals[+mi];state.pasto.tipo=+mi;state.pasto.righe=m.items.map(i=>({id:i.food.id,g:i.g}));state.area='pasto';render()}
   else if('ptset' in d){state.pasto.tipo=state.pasto.tipo===+d.ptset?-1:+d.ptset;render(true)}
+  else if('concludi' in d){const c=completezza();if(c.pct<100){$('#cmsg2').textContent='Mancano ancora: '+c.mancano.map(x=>x.k.toLowerCase()).join(', ')+'.';return}state.fatto=true;state.modifica=false;state.step=4;state.area='piano';render()}
+  else if('modifica' in d){state.modifica=true;state.step=0;state.area='piano';showUsers=false;showHome=false;render(false)}
+  else if('nosport' in d){state.noSport=!state.noSport;if(state.noSport)state.attivita={};render(true)}
   else if('vai' in d){const v=$('#verdetto');if(v)v.scrollIntoView({behavior:'smooth',block:'start'})}
   else if('area' in d){state.area=d.area;showUsers=false;showHome=false;render(false)}
   else if('pick' in d){pSel=d.pick;const f=byId(pSel);$('#pfq').value=f.n;$('#pu').innerHTML=unitHtml(f);aggiornaSug();$('#pq').focus()}
@@ -730,7 +783,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{
   const t=e.target,d=t.dataset;
-  if(d.p!==undefined){state.profile[d.p]=t.value;save();if(d.p==='nome'){const u=reg.lista.find(x=>x.id===reg.attivo);if(u){u.nome=t.value.trim()||u.nome;saveReg();const ub=$('#utbtn');if(ub)ub.textContent='👤 '+u.nome}}}
+  if(d.p!==undefined){state.profile[d.p]=t.value;save();updCompl();if(d.p==='nome'){const u=reg.lista.find(x=>x.id===reg.attivo);if(u){u.nome=t.value.trim()||u.nome;saveReg();const ub=$('#utbtn');if(ub)ub.textContent='👤 '+u.nome}}}
   else if(d.af){const [id,k]=d.af.split(':');if(state.attivita[id]){state.attivita[id][k]=t.value;save()}}
   else if(d.q){state.frigo[d.q].q=t.value;save();updVerd()}
   else if(d.search!==undefined){state.ricerca=t.value;$('#grid').innerHTML=gridHtml()}
