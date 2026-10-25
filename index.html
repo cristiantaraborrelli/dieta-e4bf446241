@@ -383,7 +383,7 @@ function composeMeal(slot,kcal,ctx){
   const chosen=[],manca=[];
   for(const comp of slot.comps){
     const all=FOODS.filter(f=>comp.roles.includes(f.role)&&f.tags.includes(slot.tag)&&!chosen.some(c=>c.food===f));
-    const key=f=>(ctx.today[f.id]||0)*10+(ctx.usage[f.id]||0)+ctx.rnd()*3+(ctx.eco?prezzoKg(f)/2:0)+(ctx.ideale&&!ctx.usage[f.id]?6:0);
+    const key=f=>{const u=ctx.lastUse[f.id],gap=u===undefined?99:ctx.day-u,rec=gap===0?0:gap===1?9:gap===2?5:gap===3?2:0,sp=(ctx.slotPrev[slot.nome]||[]).includes(f.id)?14:0;return (ctx.today[f.id]||0)*10+(ctx.usage[f.id]||0)+ctx.rnd()*3+(ctx.eco?prezzoKg(f)/2:0)+(ctx.ideale&&!ctx.usage[f.id]?8:0)+rec+sp};
     const fr=all.filter(f=>ctx.ideale?true:(state.frigo[f.id]&&ctx.stock[f.id]>=Math.min(f.min,f.pz||f.min))).sort((a,b)=>key(a)-key(b));
     let food=null,buy=false;
     if(fr.length)food=fr[0];
@@ -392,19 +392,20 @@ function composeMeal(slot,kcal,ctx){
   }
   let items=scale(chosen,kcal,false);
   if(kcal-items.reduce((a,x)=>a+x.kcal,0)>kcal*0.08)items=scale(chosen,kcal,true);
-  for(const it of items){if(!ctx.ideale)ctx.stock[it.food.id]-=it.g;ctx.today[it.food.id]=(ctx.today[it.food.id]||0)+1;ctx.usage[it.food.id]=(ctx.usage[it.food.id]||0)+1}
+  for(const it of items){if(!ctx.ideale)ctx.stock[it.food.id]-=it.g;ctx.today[it.food.id]=(ctx.today[it.food.id]||0)+1;ctx.usage[it.food.id]=(ctx.usage[it.food.id]||0)+1;ctx.lastUse[it.food.id]=ctx.day}
+  ctx.slotNow[slot.nome]=items.map(i=>i.food.id);
   return{nome:slot.nome,tag:slot.tag,target:kcal,items,manca,kcal:items.reduce((a,x)=>a+x.kcal,0)};
 }
 function buildPlan(r,ideale,nGiorni,eco){
   const rnd=rng(state.seed*7919),stock={},usage={};
   for(const id in state.frigo){const f=byId(id);if(!f)continue;const q=parseFloat(state.frigo[id].q);stock[id]=q>0?q*(f.pz||1):Infinity}
-  const days=[];
+  const days=[],lastUse={};let slotPrev={};
   for(let d=0;d<(nGiorni||state.opz.giorni);d++){
-    const ctx={rnd,stock,usage,today:{},ideale:!!ideale,eco:!!eco};
+    const ctx={rnd,stock,usage,today:{},ideale:!!ideale,eco:!!eco,day:d,lastUse,slotPrev,slotNow:{}};
     const meals=slots(state.opz.pasti).map(s=>composeMeal(s,Math.round(r.target*s.share),ctx));
     const tot={kcal:0,p:0,c:0,f:0};
     meals.forEach(m=>m.items.forEach(i=>{tot.kcal+=i.kcal;tot.p+=i.p;tot.c+=i.c;tot.f+=i.f_}));
-    days.push({meals,tot});
+    days.push({meals,tot});slotPrev=ctx.slotNow;
   }
   return days;
 }
