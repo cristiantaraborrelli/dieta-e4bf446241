@@ -92,8 +92,8 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 
 <script>
 const $=(s,r=document)=>r.querySelector(s);
-const STEPS=['Profilo','Attività','Fabbisogno','Frigorifero','Il mio piano','Peso','Obiettivo','I miei dati'];
-const AREE=[{id:'piano',nome:'📋 Piano',steps:[0,1,3,4,7]},{id:'pasto',nome:'🍽️ Pasto'},{id:'peso',nome:'⚖️ Peso',steps:[5]},{id:'obiettivo',nome:'🎯 Obiettivo',steps:[6]}];
+const STEPS=['Profilo','Attività','Fabbisogno','Frigorifero','Il mio piano','Peso','Obiettivo','I miei dati','Spesa 🛒'];
+const AREE=[{id:'piano',nome:'📋 Piano',steps:[0,1,3,4,7,8]},{id:'pasto',nome:'🍽️ Pasto'},{id:'peso',nome:'⚖️ Peso',steps:[5]},{id:'obiettivo',nome:'🎯 Obiettivo',steps:[6]}];
 const areaOf=i=>(AREE.find(a=>a.steps&&a.steps.includes(i))||AREE[0]).id;
 const ROLES={PRO:'Proteine',CAR:'Carboidrati',VER:'Verdure',FRU:'Frutta',LAT:'Latte e yogurt',SEC:'Frutta secca',DOL:'Dolci e spalmabili',GRA:'Grassi e condimenti'};
 
@@ -171,7 +171,7 @@ const BASE_DISPENSA=['olio','pasta','riso','pane','latte','biscotti','parmigiano
 const byId=id=>FOODS.find(f=>f.id===id);
 
 /* ---------- STATO ---------- */
-const DEF={step:0,seed:1,profile:{nome:'Giacomo',sesso:'m',eta:'',peso:'',altezza:'',vita:'leggera',obiettivo:'mantenere'},attivita:{},frigo:{},custom:[],opz:{giorni:1,pasti:5,aggiusta:0},ricerca:'',pesi:[],evento:{nome:'',data:'',min:'',max:''},pasto:{tipo:-1,righe:[]},area:'piano',noSport:false,fatto:false,modifica:false,pianoData:'',pianoSig:'',pianoAgg:false};
+const DEF={step:0,seed:1,profile:{nome:'Giacomo',sesso:'m',eta:'',peso:'',altezza:'',vita:'leggera',obiettivo:'mantenere'},attivita:{},frigo:{},custom:[],opz:{giorni:1,pasti:5,aggiusta:0},ricerca:'',pesi:[],evento:{nome:'',data:'',min:'',max:''},pasto:{tipo:-1,righe:[]},area:'piano',noSport:false,fatto:false,modifica:false,pianoData:'',pianoSig:'',pianoAgg:false,prezzi:{},budget:'',economico:false,spesaOk:{}};
 let _db=null;
 function idb(){return _db||(_db=new Promise((res,rej)=>{try{const q=indexedDB.open('dietaDB',1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)}catch(e){rej(e)}}))}
 function idbSet(k,v){idb().then(db=>{db.transaction('kv','readwrite').objectStore('kv').put(v,k)}).catch(()=>{})}
@@ -310,7 +310,7 @@ function verdettoFrigoHtml(){
   const r=fabb();
   if(!r)return `<div class="warn">Prima inserisci i tuoi dati nel Profilo: così so quante calorie ti servono.</div><div class="btns"><button class="btn" data-go="0">Vai al Profilo</button></div>`;
   if(!Object.keys(state.frigo).length)return `<div class="card"><h3>Il risultato</h3><p class="sub">Tocca gli alimenti che hai: qui ti dico se sei in linea con il tuo piano.</p></div>`;
-  const ideal=buildPlan(r,true),fr=buildPlan(r,false);
+  const ideal=buildPlan(r,true,null,state.economico),fr=buildPlan(r,false);
   const need={};ideal.forEach(d=>d.meals.forEach(m=>m.items.forEach(i=>{need[i.food.id]=(need[i.food.id]||0)+i.g})));
   const mq=(f,g)=>f.pz?Math.round(g/f.pz)+' pz':Math.round(g)+' g';
   const mancano=[];
@@ -370,7 +370,7 @@ function composeMeal(slot,kcal,ctx){
   const chosen=[],manca=[];
   for(const comp of slot.comps){
     const all=FOODS.filter(f=>comp.roles.includes(f.role)&&f.tags.includes(slot.tag)&&!chosen.some(c=>c.food===f));
-    const key=f=>(ctx.today[f.id]||0)*10+(ctx.usage[f.id]||0)+ctx.rnd()*3;
+    const key=f=>(ctx.today[f.id]||0)*10+(ctx.usage[f.id]||0)+ctx.rnd()*3+(ctx.eco?prezzoKg(f)/2:0)+(ctx.ideale&&!ctx.usage[f.id]?6:0);
     const fr=all.filter(f=>ctx.ideale?true:(state.frigo[f.id]&&ctx.stock[f.id]>=Math.min(f.min,f.pz||f.min))).sort((a,b)=>key(a)-key(b));
     let food=null,buy=false;
     if(fr.length)food=fr[0];
@@ -382,12 +382,12 @@ function composeMeal(slot,kcal,ctx){
   for(const it of items){if(!ctx.ideale)ctx.stock[it.food.id]-=it.g;ctx.today[it.food.id]=(ctx.today[it.food.id]||0)+1;ctx.usage[it.food.id]=(ctx.usage[it.food.id]||0)+1}
   return{nome:slot.nome,tag:slot.tag,target:kcal,items,manca,kcal:items.reduce((a,x)=>a+x.kcal,0)};
 }
-function buildPlan(r,ideale){
+function buildPlan(r,ideale,nGiorni,eco){
   const rnd=rng(state.seed*7919),stock={},usage={};
   for(const id in state.frigo){const f=byId(id);if(!f)continue;const q=parseFloat(state.frigo[id].q);stock[id]=q>0?q*(f.pz||1):Infinity}
   const days=[];
-  for(let d=0;d<state.opz.giorni;d++){
-    const ctx={rnd,stock,usage,today:{},ideale:!!ideale};
+  for(let d=0;d<(nGiorni||state.opz.giorni);d++){
+    const ctx={rnd,stock,usage,today:{},ideale:!!ideale,eco:!!eco};
     const meals=slots(state.opz.pasti).map(s=>composeMeal(s,Math.round(r.target*s.share),ctx));
     const tot={kcal:0,p:0,c:0,f:0};
     meals.forEach(m=>m.items.forEach(i=>{tot.kcal+=i.kcal;tot.p+=i.p;tot.c+=i.c;tot.f+=i.f_}));
@@ -428,10 +428,11 @@ ${rec?ricettaLink(m,i,mi):''}${m.manca.length?`<div class="tag">Ti manca: ${m.ma
 function vPiano(){
   const r=fabb();
   if(!r)return vFabb();
-  const days=buildPlan(r,true);lastPlan=days;
+  const days=buildPlan(r,true,null,state.economico);lastPlan=days;
   const creato=state.fatto?`<div class="card" style="border-color:var(--acc);background:var(--acc2)"><b>✅ Il tuo piano è creato</b><div class="tag" style="margin-top:2px">${state.pianoData?(state.pianoAgg?'Aggiornato il ':'Creato il ')+fd(state.pianoData)+' · ':''}${r.target} kcal al giorno · ${state.opz.pasti} pasti al giorno</div></div>`:'';
   return creato+vFabb()+`<h3 style="margin:18px 0 8px">Il tuo piano dei pasti</h3>`+opzHtml()+giorniHtml(days,r,true)+`
 <div class="btns noprint"><button class="btn sec" data-regen>🔄 Altre idee</button><button class="btn" data-print>🖨️ Stampa</button></div>
+<div class="card noprint"><h3>🛒 Lista della spesa</h3><p class="sub">Imposta il tuo budget settimanale: ti preparo la lista con i costi.</p><button class="btn" data-go="8">Apri la lista della spesa</button></div>
 <div class="card noprint"><h3>Non hai tutti gli ingredienti?</h3><p class="sub">Scrivi quello che hai nel frigorifero: ti dico se puoi rispettare il piano.</p><button class="btn" data-go="3">🧊 Apri il frigorifero</button></div>`}
 function opzHtml(){const o=state.opz;return `<div class="card noprint"><div class="row">
 <div><label for="og">Quanti giorni</label><select id="og" data-o="giorni">${[1,2,3,5,7].map(x=>`<option ${o.giorni==x?'selected':''}>${x}</option>`).join('')}</select></div>
@@ -648,7 +649,7 @@ function updCompl(){const c=$('#compl');if(c)c.innerHTML=completezzaHtml()}
 
 /* ---------- DATI CONCLUSI: riepilogo e modifica ---------- */
 const inModifica=()=>!(state.fatto&&!state.modifica);
-const stepsOf=a=>a.id==='piano'?(inModifica()?[0,1]:[4,3,7]):a.steps;
+const stepsOf=a=>a.id==='piano'?(inModifica()?[0,1]:[4,8,3,7]):a.steps;
 function vDati(){
   const p=state.profile,r=fabb();
   const VITA={sedentaria:'Seduto quasi sempre',leggera:'Normale',attiva:'Sempre in movimento'},OBI={mantenere:'Mantenere il peso',massa:'Mettere massa',dimagrire:'Perdere peso piano piano'};
@@ -676,9 +677,76 @@ function aggiornaPianoSeServe(){
   if(sg!==state.pianoSig){state.pianoSig=sg;state.pianoData=oggi();state.pianoAgg=true;state.seed++}
 }
 
+/* ---------- LISTA DELLA SPESA ---------- */
+const PREZZI={uovo:5,pollo:8.5,tacchino:9.5,manzo:12,salmone:19,merluzzo:13,tonno:14,prosciutto:16,bresaola:30,mozzarella:8,ricotta:7,fiocchilatte:8,ceci:3,lenticchie:3,fagioli:2.5,tofu:9,
+latte:1.5,yogurtgreco:5.5,yogurt:3,pasta:1.8,riso:2.5,cous:3.5,quinoa:8,patate:1.5,pane:3.5,paneint:4,piadina:7,avena:3.5,cereali:5,fette:4.5,biscotti:5,gallette:6,crackers:5,
+insalata:4,pomodori:3,zucchine:2.5,carote:1.5,spinaci:5,broccoli:3,cetrioli:2.5,peperoni:4,melanzane:3,funghi:7,fagiolini:4,miste:3.5,
+banana:2,mela:2,pera:2.5,arancia:1.8,kiwi:3.5,mandarini:2.5,fragole:6,uva:3.5,fruttasecca:14,mandorle:13,noci:14,miele:11,marmellata:5,arachidi:9,fondente:14,olio:9,avocado:8,parmigiano:20};
+function prezzoKg(f){const v=state.prezzi[f.id];if(v!==undefined&&v!==''){const n=parseFloat(String(v).replace(',','.'));if(n>=0)return n}return PREZZI[f.id]||0}
+const eur=x=>x.toFixed(2).replace('.',',')+' €';
+function spesaCalc(eco){
+  const r=fabb();if(!r)return null;
+  const days=buildPlan(r,true,7,eco);
+  const need={};days.forEach(d=>d.meals.forEach(m=>m.items.forEach(i=>{need[i.food.id]=(need[i.food.id]||0)+i.g})));
+  const rows=[];let tot=0;
+  for(const id in need){
+    const f=byId(id);if(!f)continue;
+    let g=need[id],gia=0,nota='';
+    const fr=state.frigo[id];
+    if(fr){const q=parseFloat(fr.q);if(q>0)gia=Math.min(g,q*(f.pz||1));else{gia=g;nota='già in frigo'}}
+    const da=g-gia;
+    if(da<=0.5){rows.push({f,da:0,costo:0,nota:nota||'già in frigo'});continue}
+    const arr=f.pz?Math.ceil(da/f.pz-0.001)*f.pz:Math.ceil(da/50)*50;
+    const costo=arr/1000*prezzoKg(f);
+    tot+=costo;rows.push({f,da:arr,costo,nota:gia>0?`ne hai già ${Math.round(gia)} g`:''});
+  }
+  const ordine=Object.keys(ROLES);
+  rows.sort((a,b)=>ordine.indexOf(a.f.role)-ordine.indexOf(b.f.role)||a.f.n.localeCompare(b.f.n));
+  return{rows,tot}
+}
+function spesaSumHtml(){
+  const A=spesaCalc(state.economico),B=spesaCalc(!state.economico);
+  if(!A)return '';
+  const bud=parseFloat(String(state.budget).replace(',','.'));
+  const eco=state.economico?A:B,norm=state.economico?B:A;
+  let stato='',cls='';
+  if(bud>0){
+    const perc=A.tot/bud*100;
+    if(A.tot<=bud){cls='ok';stato=`✅ Sei nel budget: ti avanzano circa <b>${eur(bud-A.tot)}</b>.`}
+    else{cls='no';stato=`⚠️ Superi il budget di circa <b>${eur(A.tot-bud)}</b>.`+(!state.economico&&eco.tot<=bud?' Con il piano economico ci stai dentro: toccalo qui sotto.':(state.economico?' Anche col piano economico: alza il budget o togli qualcosa.':''))}
+    stato=`<div class="bar" style="margin:8px 0"><i style="width:${Math.min(100,perc)}%;background:${cls==='ok'?'var(--acc)':'var(--red)'}"></i></div><div style="font-size:14px">${stato}</div>`
+  }else stato='<div class="tag" style="margin-top:6px">Scrivi il tuo budget settimanale per sapere se ci stai dentro.</div>';
+  const risp=norm.tot-eco.tot;
+  return `<div style="font-size:30px;font-weight:700;color:var(--acc)">${eur(A.tot)}</div><div class="tag">spesa stimata per 7 giorni (${state.economico?'piano economico':'piano normale'})</div>${stato}
+${risp>0.5?`<div class="tag" style="margin-top:8px">Il piano economico costa circa ${eur(risp)} in meno.</div>`:''}`}
+function updSpesa(){
+  const A=spesaCalc(state.economico);if(!A)return;
+  const x=$('#spesaSum');if(x)x.innerHTML=spesaSumHtml();
+  A.rows.forEach(r=>{const c=$('#cs_'+r.f.id);if(c)c.textContent=r.da?eur(r.costo):'—'});
+}
+function vSpesa(){
+  const r=fabb();
+  if(!r)return `<div class="warn">Prima crea il tuo piano: completa i dati nel Profilo.</div><div class="btns"><button class="btn" data-go="0">Vai al Profilo</button></div>`;
+  const A=spesaCalc(state.economico);
+  const qt=x=>x.f.pz?`${x.da/x.f.pz} pz`:(liq(x.f)?(x.da>=1000?fk(x.da/1000)+' l':x.da+' ml'):(x.da>=1000?fk(x.da/1000)+' kg':x.da+' g'));
+  const lista=Object.keys(ROLES).map(role=>{
+    const rr=A.rows.filter(x=>x.f.role===role);
+    if(!rr.length)return '';
+    return `<h3 style="margin:14px 0 4px">${ROLES[role]}</h3>`+rr.map(x=>{const ok=!!state.spesaOk[x.f.id];
+      return `<div class="fr" style="grid-template-columns:auto 1fr 74px 64px;gap:8px${ok?';opacity:.55':''}"><input type="checkbox" style="width:auto" data-sp="${x.f.id}" ${ok?'checked':''} aria-label="Preso">
+<span style="${ok?'text-decoration:line-through':''}">${x.f.e} ${esc(x.f.n)}<br><span class="tag">${x.da?qt(x):''} ${esc(x.nota||'')}</span></span>
+<input type="text" inputmode="decimal" data-prezzo="${x.f.id}" value="${esc(state.prezzi[x.f.id]!==undefined&&state.prezzi[x.f.id]!==''?state.prezzi[x.f.id]:(PREZZI[x.f.id]||''))}" placeholder="€/kg" aria-label="Prezzo al chilo" style="padding:6px;font-size:14px">
+<b id="cs_${x.f.id}" style="text-align:right;font-size:14px">${x.da?eur(x.costo):'—'}</b></div>`}).join('')}).join('');
+  return `<div class="card"><h2>Lista della spesa 🛒</h2><p class="sub">Per i prossimi 7 giorni del tuo piano. Gli alimenti che hai già nel frigorifero non vengono contati.</p>
+<label for="bud">Il tuo budget settimanale (€)</label><input id="bud" type="text" inputmode="decimal" data-budget placeholder="es. 60" value="${esc(state.budget)}">
+<div id="spesaSum" style="margin-top:10px">${spesaSumHtml()}</div>
+<div style="margin-top:10px"><button class="chip ${state.economico?'on':''}" data-eco>${state.economico?'✓ ':''}Piano economico</button> <span class="tag">sceglie gli alimenti che costano meno</span></div></div>
+<div class="card"><h3>Cosa comprare</h3><p class="sub">Spunta quello che hai preso. I prezzi sono stime al chilo (o al litro): se nel tuo negozio costano diversamente, cambiali e il totale si aggiorna.</p>${lista||'<p class="sub">Niente da comprare.</p>'}</div>
+<div class="btns"><button class="btn sec" data-go="4">← Il mio piano</button><span></span></div>`}
+
 /* ---------- MOTORE UI ---------- */
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-const VIEWS=[vProfilo,vAttivita,vFabb,vFrigo,vPiano,vPeso,vObiettivo,vDati];
+const VIEWS=[vProfilo,vAttivita,vFabb,vFrigo,vPiano,vPeso,vObiettivo,vDati,vSpesa];
 let showHome=false,dp=null;
 function vUtenti(){
   const forced=!reg.attivo;
@@ -722,7 +790,7 @@ function render(keepScroll){
 }
 function setPath(path,v){const [a,b]=path.split('.');state[a][b]=v}
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-seg],[data-act],[data-food],[data-dispensa],[data-addcustom],[data-save],[data-cp],[data-ptset],[data-concludi],[data-modifica],[data-nosport],[data-vai],[data-area],[data-pick],[data-addpasto],[data-delpasto],[data-clearpasto],[data-users],[data-backup],[data-restore],[data-switch],[data-deluser],[data-newuser],[data-home],[data-install],[data-regen],[data-addpeso],[data-clearev],[data-delpeso],[data-print],[data-addfood]');
+  const t=e.target.closest('[data-go],[data-seg],[data-act],[data-food],[data-dispensa],[data-addcustom],[data-save],[data-cp],[data-ptset],[data-concludi],[data-modifica],[data-eco],[data-nosport],[data-vai],[data-area],[data-pick],[data-addpasto],[data-delpasto],[data-clearpasto],[data-users],[data-backup],[data-restore],[data-switch],[data-deluser],[data-newuser],[data-home],[data-install],[data-regen],[data-addpeso],[data-clearev],[data-delpeso],[data-print],[data-addfood]');
   if(!t)return;
   if(e.target.closest('.cfg')&&t.dataset.act)return;
   const d=t.dataset;
@@ -758,6 +826,7 @@ document.addEventListener('click',e=>{
   else if('ptset' in d){state.pasto.tipo=state.pasto.tipo===+d.ptset?-1:+d.ptset;render(true)}
   else if('concludi' in d){const c=completezza();if(c.pct<100){$('#cmsg2').textContent='Mancano ancora: '+c.mancano.map(x=>x.k.toLowerCase()).join(', ')+'.';return}const eraFatto=state.fatto;state.fatto=true;state.modifica=false;state.pianoData=oggi();state.pianoAgg=eraFatto;state.pianoSig=sigDati();if(eraFatto)state.seed++;state.step=4;state.area='piano';render()}
   else if('modifica' in d){state.modifica=true;state.step=0;state.area='piano';showUsers=false;showHome=false;render(false)}
+  else if('eco' in d){state.economico=!state.economico;state.pianoData=state.pianoData;render(true)}
   else if('nosport' in d){state.noSport=!state.noSport;if(state.noSport)state.attivita={};render(true)}
   else if('vai' in d){const v=$('#verdetto');if(v)v.scrollIntoView({behavior:'smooth',block:'start'})}
   else if('area' in d){state.area=d.area;showUsers=false;showHome=false;render(false)}
@@ -801,11 +870,14 @@ document.addEventListener('input',e=>{
   else if(d.search!==undefined){state.ricerca=t.value;$('#grid').innerHTML=gridHtml()}
   else if(d.aggiusta!==undefined){state.opz.aggiusta=+t.value;save()}
   else if(d.ev){state.evento[d.ev]=t.value;save()}
+  else if(d.budget!==undefined){state.budget=t.value;save();updSpesa()}
+  else if(d.prezzo!==undefined){state.prezzi[d.prezzo]=t.value;save();updSpesa()}
   else if(d.pq!==undefined){pSel=null;aggiornaSug();const m=cerca(t.value);$('#pu').innerHTML=unitHtml(m.length===1?m[0]:null)}
 });
 document.addEventListener('change',e=>{
   const t=e.target,d=t.dataset;
-  if(d.o){state.opz[d.o]=+t.value;render(true)}
+  if(d.sp!==undefined){state.spesaOk[d.sp]=t.checked;save();render(true)}
+  else if(d.o){state.opz[d.o]=+t.value;render(true)}
   else if(d.aggiusta!==undefined){state.apriCalc=true;render(true)}
   else if(d.ev){render(true)}
   else if(d.ptipo!==undefined){state.pasto.tipo=+t.value;render(true)}
