@@ -2,7 +2,7 @@
   "aggiornato": "2026-10-25",
   "negozi": {
     "Ipercarni": {
-      "punto": "Formello",
+      "punto": "Vigne Nuove",
       "valido_dal": "2026-10-23",
       "valido_al": "2026-11-03",
       "prezzi": {
@@ -35,7 +35,7 @@
       }
     },
     "Conad": {
-      "punto": "Spazio Conad, Via A. Lionello, Roma",
+      "punto": "Porte di Roma",
       "valido_dal": "2026-10-20",
       "valido_al": "2026-11-02",
       "prezzi": {
