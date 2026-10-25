@@ -489,6 +489,50 @@ ${ok?'<div class="btns"><span></span><button class="chip" data-clearev>Togli l\'
 <div class="card"><h3>Storico</h3>${L.length?L.map((x,i)=>({x,i})).reverse().map(({x,i})=>{const pv=i>0?x.kg-L[i-1].kg:null;return `<div class="kv"><span>${fd(x.d)}</span><span><b>${fk(x.kg)} kg</b> <span class="tag">${pv===null?'':sg(pv)}</span> <button class="chip" data-delpeso="${i}" aria-label="Elimina">✕</button></span></div>`}).join(''):'<p class="sub">Ancora nessun peso registrato.</p>'}</div>`}
 
 /* ---------- CALCOLA PASTO ---------- */
+/* alimenti extra: si trovano solo cercando nel Calcola pasto */
+(function(){
+const A=(id,n,e,k,p,c,f,def,pz=0)=>FOODS.push(F(id,n,e,'ALT',k,p,c,f,'cps',def,5,2000,pz));
+A('pizza','Pizza margherita','🍕',271,11,33,10,300);A('focaccia','Focaccia','🫓',270,6,41,9,100);
+A('pastacotta','Pasta cotta','🍝',158,5.8,31,0.9,200);A('risocotto','Riso cotto','🍚',130,2.7,28,0.3,200);
+A('pastaint','Pasta integrale (a crudo)','🍝',340,13,66,2.5,90);A('pastauovo',"Pasta all'uovo (a crudo)",'🍝',370,14,70,3,90);
+A('gnocchi','Gnocchi di patate','🥟',150,3.5,33,0.5,200);A('lasagne','Lasagne','🍝',135,7,14,5.5,250);
+A('polenta','Polenta cotta','🌽',70,1.5,15,0.4,200);A('farro','Farro (a crudo)','🌾',340,15,67,2.5,80);A('orzo','Orzo (a crudo)','🌾',350,10,73,1.2,80);
+A('grissini','Grissini','🥖',433,12,72,10,30);A('muesli','Muesli','🥣',365,10,66,6,50);A('granola','Granola','🥣',471,10,64,20,40);
+A('cornetto','Cornetto / brioche','🥐',400,8,50,19,60,60);A('merendina','Merendina','🍰',430,6,60,18,35,35);
+A('gelato','Gelato','🍨',200,3.5,24,10,100);A('patatinef','Patatine fritte','🍟',312,3.4,41,15,150);A('patatinebusta','Patatine in busta','🍟',536,6,53,34,30);
+A('hamburger','Hamburger (carne cotta)','🍔',250,19,0,19,120);A('cotoletta','Cotoletta impanata','🍖',260,17,13,16,150);
+A('salsiccia','Salsiccia','🌭',300,15,1,27,100);A('wurstel','Würstel','🌭',270,11,3,24,100);A('mortadella','Mortadella','🥓',311,15,1,27,50);
+A('salame','Salame','🥓',425,26,1,35,40);A('speck','Speck','🥓',300,28,0,20,50);A('vitello','Vitello','🥩',130,21,0,5,150);A('maiale','Lonza di maiale','🥩',157,22,0,7,150);
+A('tonnoolio',"Tonno sott'olio",'🐟',192,25,0,10,80);A('salmoneaff','Salmone affumicato','🐟',170,22,0,9,60);A('gamberi','Gamberi','🦐',85,18,0,1,150);A('orata','Orata / branzino','🐟',96,19,0,2,150);
+A('pecorino','Pecorino','🧀',387,26,0,31,30);A('scamorza','Scamorza','🧀',334,25,1,25,100);A('gorgonzola','Gorgonzola','🧀',330,19,0,28,50);A('burrata','Burrata','🧀',330,15,1,30,125);
+A('stracchino','Stracchino','🧀',300,18,2,25,60);A('philadelphia','Formaggio spalmabile','🧀',253,6,4,24,30);A('panna','Panna','🥛',300,2,3,30,30);A('skyr','Skyr','🥣',63,11,4,0.2,150);A('yogurtfrutta','Yogurt alla frutta','🥣',90,3.5,15,1.5,125);
+A('albume','Albume','🥚',48,11,0.7,0.2,33,33);A('hummus','Hummus','🫘',230,8,14,17,50);
+A('nutella','Crema alle nocciole','🍫',539,6,58,31,20);A('ciocolatte','Cioccolato al latte','🍫',535,7.7,59,30,25);A('burro','Burro','🧈',717,0.8,0.1,81,10);A('maionese','Maionese','🥫',680,1,1,75,15);A('ketchup','Ketchup','🥫',100,1,25,0.1,20);A('pesto','Pesto','🌿',500,5,5,50,20);A('passata','Passata di pomodoro','🍅',30,1.5,5,0.3,100);A('zucchero','Zucchero','🍬',400,0,100,0,5);
+A('cola','Coca-cola / bibita gassata','🥤',42,0,10.6,0,330);A('succofrutta','Succo di frutta','🧃',45,0.3,11,0,200);A('birra','Birra','🍺',43,0.5,3.6,0,330);A('vino','Vino','🍷',85,0.1,2.6,0,150);
+A('caffe','Caffè','☕',2,0.1,0,0,30);A('cappuccino','Cappuccino','☕',45,2.5,3.5,2.3,150);A('lattescremato','Latte scremato','🥛',35,3.4,5,0.2,200);A('lattesoia','Latte di soia','🥛',33,3,0.5,1.8,250);
+A('whey','Proteine in polvere','💪',400,80,8,6,30);A('barretta','Barretta proteica','🍫',370,30,30,12,50,50);
+A('ananas','Ananas','🍍',50,0.5,13,0.1,150);A('melone','Melone','🍈',34,0.8,8,0.2,200);A('anguria','Anguria','🍉',30,0.6,8,0.2,250);A('pesca','Pesca','🍑',39,0.9,10,0.3,150,150);
+A('albicocche','Albicocche','🍑',48,1.4,11,0.4,100);A('ciliegie','Ciliegie','🍒',63,1.1,16,0.2,100);A('mirtilli','Mirtilli','🫐',57,0.7,14,0.3,100);A('lamponi','Lamponi','🍓',52,1.2,12,0.7,100);
+A('datteri','Datteri','🌴',282,2.5,75,0.4,30);A('uvetta','Uvetta','🍇',299,3,79,0.5,30);A('fichi','Fichi','🫐',74,0.8,19,0.3,100);
+A('cavolfiore','Cavolfiore','🥦',25,2,5,0.3,200);A('finocchi','Finocchi','🥬',31,1.2,7,0.2,200);A('zucca','Zucca','🎃',26,1,6.5,0.1,200);A('piselli','Piselli','🫛',81,5,14,0.4,150);
+A('mais','Mais','🌽',86,3.3,19,1.2,100);A('rucola','Rucola','🥬',25,2.6,3.7,0.7,50);A('asparagi','Asparagi','🌿',20,2.2,3.9,0.1,150);A('sedano','Sedano','🥬',16,0.7,3,0.2,100);A('cipolla','Cipolla','🧅',40,1.1,9,0.1,50);
+})();
+const ALIAS={pasta:'spaghetti penne rigatoni fusilli maccheroni tagliatelle',pastacotta:'spaghetti penne',riso:'risotto',risocotto:'risotto',pane:'panino michetta',pollo:'pollo arrosto',pizza:'pizzetta',cornetto:'croissant',whey:'proteine integratore',cola:'fanta sprite bibita',nutella:'nocciole cioccolata',uovo:'uova frittata',latte:'cappuccino',hamburger:'macinato polpetta',mozzarella:'fiordilatte bufala',parmigiano:'grana formaggio',tonno:'scatoletta'};
+const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+function cerca(q){
+  const w=norm(q).split(/\s+/).filter(Boolean);if(!w.length)return[];
+  return FOODS.map(f=>{const n=norm(f.n+' '+(ALIAS[f.id]||''));return w.every(x=>n.includes(x))?{f,s:norm(f.n).startsWith(w[0])?0:1}:null}).filter(Boolean).sort((a,b)=>a.s-b.s).map(x=>x.f).slice(0,8);
+}
+let pSel=null;
+function aggiornaSug(){
+  const qi=$('#pfq');if(!qi)return;
+  const q=qi.value.trim(),box=$('#psug'),cu=$('#pcust');
+  if(!q){box.innerHTML='';cu.hidden=true;return}
+  const m=cerca(q);
+  box.innerHTML=m.map(f=>`<span class="chip ${pSel===f.id?'on':''}" data-pick="${f.id}">${f.e} ${esc(f.n)} · ${f.k} kcal/100 g</span>`).join('');
+  cu.hidden=!!m.length;
+}
+
 function unitHtml(f){return `<option value="g">grammi</option>${f&&f.pz?`<option value="pz">pezzi (1 ≈ ${f.pz} g)</option>`:''}`}
 function vPasto(){
   const r=fabb(),sl=slots(state.opz.pasti),ti=Math.min(state.pasto.tipo,sl.length-1),sc=sl[ti];
@@ -506,12 +550,15 @@ function vPasto(){
     vd=`<div class="${cls==='ok'?'':'warn'}" style="margin-top:12px;${cls==='ok'?'background:var(--acc2);border-radius:12px;padding:12px;font-size:14px':''}">${t}${prot}</div>
 <div class="kv" style="margin-top:10px"><span>Questo pasto</span><b>${Math.round(tot.k/tg*100)}% del previsto · ${Math.round(tot.k/r.target*100)}% della giornata</b></div>
 <div class="bar"><i style="width:${Math.min(100,tot.k/tg*100)}%;background:${cls==='ok'?'var(--acc)':'var(--warm)'}"></i></div>`}
-  const f0=FOODS[0];
+  
   return `<div class="card"><h2>Calcola il pasto 🍽️</h2><p class="sub">Scegli un alimento, scrivi quanto ne mangi: ti dico le calorie e se il pasto è in linea con il piano.</p>
 <label for="pt">Che pasto è?</label><select id="pt" data-ptipo>${sl.map((x,i)=>`<option value="${i}" ${i===ti?'selected':''}>${x.nome}${r?` (circa ${Math.round(r.target*x.share)} kcal)`:''}</option>`).join('')}</select>
-<label for="pf">Alimento</label><select id="pf" data-pf>${Object.keys(ROLES).map(role=>`<optgroup label="${ROLES[role]}">${FOODS.filter(f=>f.role===role).map(f=>`<option value="${f.id}">${f.e} ${esc(f.n)} · ${f.k} kcal/100 g</option>`).join('')}</optgroup>`).join('')}</select>
+<label for="pfq">Cosa hai mangiato? Scrivilo qui</label><input id="pfq" data-pq autocomplete="off" placeholder="es. pasta, mela, pizza, yogurt…">
+<div id="psug" style="margin-top:6px"></div>
+<div id="pcust" class="warn" style="margin-top:10px" hidden><b>Non lo trovo.</b> Scrivi le calorie per 100 g (sono sulla confezione) e lo aggiungo: la prossima volta lo trovi da solo.
+<div class="row"><div><label for="pkc">kcal / 100 g</label><input id="pkc" type="text" inputmode="decimal"></div><div><label for="pkp">Proteine (g), facoltativo</label><input id="pkp" type="text" inputmode="decimal"></div><div><label for="pkch">Carboidrati (g), facoltativo</label><input id="pkch" type="text" inputmode="decimal"></div><div><label for="pkf">Grassi (g), facoltativo</label><input id="pkf" type="text" inputmode="decimal"></div></div></div>
 <div class="row"><div><label for="pq">Quantità</label><input id="pq" type="text" inputmode="decimal" autocomplete="off" placeholder="es. 80"></div>
-<div><label for="pu">Unità</label><select id="pu">${unitHtml(f0)}</select></div></div>
+<div><label for="pu">Unità</label><select id="pu">${unitHtml(null)}</select></div></div>
 <div class="btns"><span id="pmsg2" class="tag" style="color:var(--red)"></span><button class="btn" data-addpasto>＋ Aggiungi al pasto</button></div></div>
 <div class="card"><h3>Il tuo pasto</h3>
 ${righe.length?righe.map((x,i)=>`<div class="kv"><span>${x.f.e} ${esc(x.f.n)} <span class="tag">${x.f.pz?Math.round(x.g/x.f.pz*10)/10+' pz · ':''}${Math.round(x.g)} g</span></span><span><b>${Math.round(x.k)} kcal</b> <button class="chip" data-delpasto="${i}" aria-label="Elimina">✕</button></span></div>`).join('')+`
@@ -557,7 +604,7 @@ function render(keepScroll){
 }
 function setPath(path,v){const [a,b]=path.split('.');state[a][b]=v}
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-seg],[data-act],[data-food],[data-dispensa],[data-addcustom],[data-save],[data-cp],[data-addpasto],[data-delpasto],[data-clearpasto],[data-users],[data-backup],[data-restore],[data-switch],[data-deluser],[data-newuser],[data-home],[data-install],[data-regen],[data-addpeso],[data-clearev],[data-delpeso],[data-print],[data-addfood]');
+  const t=e.target.closest('[data-go],[data-seg],[data-act],[data-food],[data-dispensa],[data-addcustom],[data-save],[data-cp],[data-pick],[data-addpasto],[data-delpasto],[data-clearpasto],[data-users],[data-backup],[data-restore],[data-switch],[data-deluser],[data-newuser],[data-home],[data-install],[data-regen],[data-addpeso],[data-clearev],[data-delpeso],[data-print],[data-addfood]');
   if(!t)return;
   if(e.target.closest('.cfg')&&t.dataset.act)return;
   const d=t.dataset;
@@ -590,10 +637,14 @@ document.addEventListener('click',e=>{
     const tt=$('#toast');tt.textContent=ok?'✅ Dati salvati su questo telefono.':'⚠️ Il browser non permette di salvare qui: usa «Copia i miei dati» in 👤 Utenti.';tt.hidden=false;
     clearTimeout(window._tt);window._tt=setTimeout(()=>{tt.hidden=true},2600)}
   else if('cp' in d){const [di,mi]=d.cp.split('-'),m=lastPlan[+di].meals[+mi];state.pasto.tipo=+mi;state.pasto.righe=m.items.map(i=>({id:i.food.id,g:i.g}));state.step=6;render()}
+  else if('pick' in d){pSel=d.pick;const f=byId(pSel);$('#pfq').value=f.n;$('#pu').innerHTML=unitHtml(f);aggiornaSug();$('#pq').focus()}
   else if('addpasto' in d){
-    const f=byId($('#pf').value),q=num($('#pq').value),u=$('#pu').value;
-    if(!f||!(q>0)){$('#pmsg2').textContent='Scegli un alimento e scrivi la quantità.';return}
-    state.pasto.righe.push({id:f.id,g:Math.round((u==='pz'?q*f.pz:q)*10)/10});render(true)}
+    const q=$('#pfq').value.trim(),qt=num($('#pq').value),u=$('#pu').value,msg=$('#pmsg2');
+    let f=pSel?byId(pSel):null;
+    if(!f&&q){const m=cerca(q);const ex=m.find(x=>norm(x.n)===norm(q));if(ex)f=ex;else if(m.length===1)f=m[0];else if(m.length>1){msg.textContent="Tocca l'alimento giusto nella lista qui sopra.";return}}
+    if(!f&&q){const kc=num($('#pkc').value);if(kc>0){f=F('c'+Date.now(),q.charAt(0).toUpperCase()+q.slice(1),'🍽️','ALT',kc,num($('#pkp').value)||0,num($('#pkch').value)||0,num($('#pkf').value)||0,'cps',100,5,2000);FOODS.push(f);state.custom.push(f)}else{msg.textContent='Non lo trovo: scrivi le kcal per 100 g qui sopra.';return}}
+    if(!f||!(qt>0)){msg.textContent='Scrivi cosa hai mangiato e la quantità.';return}
+    pSel=null;state.pasto.righe.push({id:f.id,g:Math.round((u==='pz'&&f.pz?qt*f.pz:qt)*10)/10});render(true)}
   else if('delpasto' in d){state.pasto.righe.splice(+d.delpasto,1);render(true)}
   else if('clearpasto' in d){state.pasto.righe=[];render(true)}
   else if('users' in d){showUsers=!showUsers;confDel=null;render(false)}
@@ -626,6 +677,7 @@ document.addEventListener('input',e=>{
   else if(d.search!==undefined){state.ricerca=t.value;$('#grid').innerHTML=gridHtml()}
   else if(d.aggiusta!==undefined){state.opz.aggiusta=+t.value;save()}
   else if(d.ev){state.evento[d.ev]=t.value;save()}
+  else if(d.pq!==undefined){pSel=null;aggiornaSug();const m=cerca(t.value);$('#pu').innerHTML=unitHtml(m.length===1?m[0]:null)}
 });
 document.addEventListener('change',e=>{
   const t=e.target,d=t.dataset;
